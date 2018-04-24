@@ -1,11 +1,11 @@
 # Basic
-title: Vno Jekyll
-subtitle: A blog-orientation theme for Jekyll
-welcome_message: <a href="https://github.com/onevcat/vno-jekyll" target="_blank">Download the theme</a>
-description: Vno Jekyll is a port of my Ghost theme vno.
-creator: <a href="http://onev.cat">@onevcat</a>
+title: Onewang
+subtitle: iOS developer logging
+welcome_message: <a href="https://github.com/OneWang" target="_blank">主页</a>
+description: 生命不息，奋斗不止
+creator: <a href="https://github.com/OneWang">@onewang</a>
 
-url: "http://vno.onevcat.com"
+url: "https://github.com/OneWang"
 
 permalink: /:year/:month/:title/
 
@@ -22,7 +22,7 @@ blog_button:
 
 # Navigation buttons in the front page.
 nav:
-    - {title: Projects, description: My Projects, url: 'http://project.onevcat.com'}
+    - {title: Projects, description: My Projects, url: 'https://github.com/OneWang'}
     # - {title: Another Button, description: A button, url: 'http://example.com'}
 
 # Pagination
@@ -37,11 +37,11 @@ comment:
     
 # Social
 social:
-    weibo: onevcat
-    github: onevcat
-    twitter: onevcat
+    weibo: onewang
+    github: onewang
+    twitter: onewang
     gplus: 107108267983477358170
-    mail: onev@onevcat.com
+    mail: jackwangqingfei@gmail.com
 
 # Google Analytics
 ga:
