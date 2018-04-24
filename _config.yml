@@ -1,11 +1,11 @@
 # Basic
-title: Vno Jekyll
-subtitle: A blog-orientation theme for Jekyll
-welcome_message: <a href="https://github.com/onevcat/vno-jekyll" target="_blank">Download the theme</a>
-description: Vno Jekyll is a port of my Ghost theme vno.
-creator: <a href="http://onev.cat">@onevcat</a>
+title: One Wang
+subtitle: 优胜劣汰
+welcome_message: 生命不息，奋斗不止。
+description: 努力……
+creator: <a href="https://github.com/OneWang">@onewang</a>
 
-url: "http://vno.onevcat.com"
+url: "https://github.com/OneWang"
 
 permalink: /:year/:month/:title/
 
