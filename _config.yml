@@ -13,11 +13,11 @@ permalink: /:year/:month/:title/
 highlighter: rouge
 
 # supported colors: blue, green, purple, red, orange or slate. If you need clear, leave it empty.
-cover_color: red
+cover_color: blue
 
 # The blog button should not be removed.
 blog_button:
-    title: Blog
+    title: 博客
     description: Visit blog
 
 # Navigation buttons in the front page.
@@ -32,15 +32,16 @@ paginate_path: "page/:num/"
 
 # Comment
 comment:
-    disqus: vno-jekyll
+    # disqus: vno-jekyll
     # duoshuo: 
     
 # Social
 social:
+    jianshu: onewang
     weibo: onewang
     github: onewang
     twitter: onewang
-    gplus: 107108267983477358170
+    # gplus: 107108267983477358170
     mail: jackwangqingfei@gmail.com
 
 # Google Analytics
