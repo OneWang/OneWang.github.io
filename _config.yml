@@ -13,7 +13,7 @@ permalink: /:year/:month/:title/
 highlighter: rouge
 
 # supported colors: blue, green, purple, red, orange or slate. If you need clear, leave it empty.
-cover_color: blue
+cover_color:
 
 # The blog button should not be removed.
 blog_button:
@@ -38,10 +38,10 @@ comment:
 # Social
 social:
     jianshu: onewang
-    weibo: onewang
+#weibo: onewang
     github: onewang
-    twitter: onewang
-    # gplus: 107108267983477358170
+#twitter: onewang
+#gplus: 107108267983477358170
     mail: jackwangqingfei@gmail.com
 
 # Google Analytics
