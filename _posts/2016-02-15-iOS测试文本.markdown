@@ -1,0 +1,13 @@
+---
+layout: post
+title: iOS测试文本
+date: 2016-02-15 15:32:24.000000000 +09:00
+---
+
+① NilTest宏，判断对象是否为nil，若为 nil，直接返回 nil。
+② GetIsaFast宏快速获取到对象的 isa 指针地址（不同处理器架构存放的位置不同）
+③ CacheLookup宏_cache_getImp(Class cls, SEL sel)包含并调用了这块代码。尝试寻找sel对应的IMP，有可能返回_objc_msgForward_impcache(?下文会讲到。
+④ MethodTableLookup最终调用了lookUpImpOrForward方法，尝试找method_array_t里所有method_list_t中的包含sel的method_t的IMP。有可能返回_objc_msgForward_impcache(?下文会讲到)。
+此外，我们可以猜测ObjC中IMP的定义为
+typedef id (*IMP)(...)或者id (*IMP)(id object, SEL sel,...) (返回值也可能为结构体或浮点数)。
+

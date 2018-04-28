@@ -6,17 +6,17 @@
   <meta http-equiv="X-UA-Compatible" content="IE=edge">
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
 
-  <title>Onewang</title>
-  <meta name="description" content="生命不息，奋斗不止">
+  <title>多线程</title>
+  <meta name="description" content="① NilTest宏，判断对象是否为nil，若为 nil，直接返回 nil。② GetIsaFast宏快速获取到对象的 isa 指针地址（不同处理器架构存放的位置不同）③ CacheLookup宏_cache_getImp(Class cls, SEL sel)包含并调用了这块代码。尝试寻找sel对应的IMP，有...">
   <meta name="author" content="Wei Wang">
 
   <meta name="twitter:card" content="summary">
-  <meta name="twitter:title" content="Onewang">
-  <meta name="twitter:description" content="生命不息，奋斗不止">
+  <meta name="twitter:title" content="多线程">
+  <meta name="twitter:description" content="① NilTest宏，判断对象是否为nil，若为 nil，直接返回 nil。② GetIsaFast宏快速获取到对象的 isa 指针地址（不同处理器架构存放的位置不同）③ CacheLookup宏_cache_getImp(Class cls, SEL sel)包含并调用了这块代码。尝试寻找sel对应的IMP，有...">
   
   <meta property="og:type" content="article">
-  <meta property="og:title" content="Onewang">
-  <meta property="og:description" content="生命不息，奋斗不止">
+  <meta property="og:title" content="多线程">
+  <meta property="og:description" content="① NilTest宏，判断对象是否为nil，若为 nil，直接返回 nil。② GetIsaFast宏快速获取到对象的 isa 指针地址（不同处理器架构存放的位置不同）③ CacheLookup宏_cache_getImp(Class cls, SEL sel)包含并调用了这块代码。尝试寻找sel对应的IMP，有...">
   
   <link rel="icon" type="image/png" href="/assets/images/favicon.png" />
   <link href="/assets/images/favicon.png" rel="shortcut icon" type="image/png">
@@ -24,7 +24,7 @@
   <link rel="stylesheet" href="/css/main.css">
   <link href="//netdna.bootstrapcdn.com/font-awesome/4.1.0/css/font-awesome.min.css" rel="stylesheet">
 
-  <link rel="canonical" href="http://localhost:4000/">
+  <link rel="canonical" href="http://localhost:4000/2016/02/iOS%E5%A4%9A%E7%BA%BF%E7%A8%8B/">
   <link rel="alternate" type="application/rss+xml" title="Onewang" href="http://localhost:4000/feed.xml">
   
   <meta name="google-site-verification" content="1-1ZlHoRvM0T2FqPbW2S-qLgYXN6rsn52kErlMPd_gw" />
@@ -39,7 +39,7 @@
         <i class="fa fa-angle-up btn-mobile-close__icon hidden"></i>
     </span>
     
-    <header class="panel-cover " style="background-image: url('/assets/images/background-cover.jpg')">
+    <header class="panel-cover panel-cover--collapsed" style="background-image: url('/assets/images/background-cover.jpg')">
   <div class="panel-main">
 
     <div class="panel-main__inner panel-inverted">
@@ -139,36 +139,71 @@
 
     <div class="content-wrapper">
         <div class="content-wrapper__inner">
-            <div class="main-post-list hidden">
+            <article class="post-container post-container--single" itemscope itemtype="http://schema.org/BlogPosting">
+  <header class="post-header">
+    <div class="post-meta">
+      <time datetime="2016-02-16 15:32:24 +0900" itemprop="datePublished" class="post-meta__date date">2016-02-16</time> &#8226; <span class="post-meta__tags tags"></span>
+    </div>
+    <h1 class="post-title">多线程</h1>
+  </header>
 
-  <ol class="post-list">
-    
-    <li>
-      <h2 class="post-list__post-title post-title"><a href="/2016/02/iOS%E5%A4%9A%E7%BA%BF%E7%A8%8B/" title="访问 多线程">多线程</a></h2>
-      <p class="excerpt">① NilTest宏，判断对象是否为nil，若为 nil，直接返回 nil。② GetIsaFast宏快速获取到对象的 isa 指针地址（不同处理器架构存放的位置不同）③ CacheLookup宏_cache_getImp(Class cls, SEL sel)包含并调用了这块代码。尝试寻找sel对应的IMP，有可能返回_objc_msgForward_impcache(?下文会讲到。④ MethodTableLookup最终调用了lookUpImpOrForward方法，尝试找metho...&hellip;</p>
-      <div class="post-list__meta"><time datetime="2016-02-16 15:32:24 +0900" class="post-list__meta--date date">2016-02-16</time> &#8226; <span class="post-list__meta--tags tags"></span><a class="btn-border-small" href=/2016/02/iOS%E5%A4%9A%E7%BA%BF%E7%A8%8B/>继续阅读</a></div>
-      <hr class="post-list__divider" />
-    </li>
-    
-    <li>
-      <h2 class="post-list__post-title post-title"><a href="/2016/02/iOS%E6%B5%8B%E8%AF%95%E6%96%87%E6%9C%AC/" title="访问 iOS测试文本">iOS测试文本</a></h2>
-      <p class="excerpt">① NilTest宏，判断对象是否为nil，若为 nil，直接返回 nil。② GetIsaFast宏快速获取到对象的 isa 指针地址（不同处理器架构存放的位置不同）③ CacheLookup宏_cache_getImp(Class cls, SEL sel)包含并调用了这块代码。尝试寻找sel对应的IMP，有可能返回_objc_msgForward_impcache(?下文会讲到。④ MethodTableLookup最终调用了lookUpImpOrForward方法，尝试找metho...&hellip;</p>
-      <div class="post-list__meta"><time datetime="2016-02-15 15:32:24 +0900" class="post-list__meta--date date">2016-02-15</time> &#8226; <span class="post-list__meta--tags tags"></span><a class="btn-border-small" href=/2016/02/iOS%E6%B5%8B%E8%AF%95%E6%96%87%E6%9C%AC/>继续阅读</a></div>
-      <hr class="post-list__divider" />
-    </li>
-    
-  </ol>
+  <section class="post">
+    <p>① NilTest宏，判断对象是否为nil，若为 nil，直接返回 nil。
+② GetIsaFast宏快速获取到对象的 isa 指针地址（不同处理器架构存放的位置不同）
+③ CacheLookup宏_cache_getImp(Class cls, SEL sel)包含并调用了这块代码。尝试寻找sel对应的IMP，有可能返回_objc_msgForward_impcache(?下文会讲到。
+④ MethodTableLookup最终调用了lookUpImpOrForward方法，尝试找method_array_t里所有method_list_t中的包含sel的method_t的IMP。有可能返回_objc_msgForward_impcache(?下文会讲到)。
+此外，我们可以猜测ObjC中IMP的定义为
+typedef id (<em>IMP)(…)或者id (</em>IMP)(id object, SEL sel,…) (返回值也可能为结构体或浮点数)。</p>
 
-  <hr class="post-list__divider " />
+<p>作者：饿了么物流移动团队
+链接：https://juejin.im/post/5ae17e625188256739546e4e
+来源：掘金
+著作权归作者所有。商业转载请联系作者获得授权，非商业转载请注明出处。</p>
 
-<nav class="pagination" role="navigation">
+  </section>
+</article>
+
+<section class="read-more">
+   
+   
+   
+   
+   <div class="read-more-item">
+       <span class="read-more-item-dim">更早的文章</span>
+       <h2 class="post-list__post-title post-title"><a href="/2016/02/iOS%E6%B5%8B%E8%AF%95%E6%96%87%E6%9C%AC/" title="link to iOS测试文本">iOS测试文本</a></h2>
+       <p class="excerpt">① NilTest宏，判断对象是否为nil，若为 nil，直接返回 nil。② GetIsaFast宏快速获取到对象的 isa 指针地址（不同处理器架构存放的位置不同）③ CacheLookup宏_cache_getImp(Class cls, SEL sel)包含并调用了这块代码。尝试寻找sel对应的IMP，有可能返回_objc_msgForward_impcache(?下文会讲到。④ MethodTableLookup最终调用了lookUpImpOrForward方法，尝试找metho...&hellip;</p>
+       <div class="post-list__meta"><time datetime="2016-02-15 15:32:24 +0900" class="post-list__meta--date date">2016-02-15</time> &#8226; <span class="post-list__meta--tags tags"></span><a class="btn-border-small" href=/2016/02/iOS%E6%B5%8B%E8%AF%95%E6%96%87%E6%9C%AC/>继续阅读</a></div>
+   </div>
+   
+</section>
+
+<section class="post-comments">
+  
+    <div id="disqus_thread"></div>
+    <script>
     
-    <span class="pagination__page-number">1 / 1</span>
+    var disqus_config = function () {
+        this.page.url = "http://localhost:4000/2016/02/iOS%E5%A4%9A%E7%BA%BF%E7%A8%8B/";
+        this.page.identifier = "/2016/02/iOS%E5%A4%9A%E7%BA%BF%E7%A8%8B/";
+    };
+
+    var disqus_shortname = 'onewang';
     
-</nav>
+    (function() { // DON'T EDIT BELOW THIS LINE
+        var d = document, s = d.createElement('script');
+        s.src = '//' + disqus_shortname + '.disqus.com/embed.js';
+        s.setAttribute('data-timestamp', +new Date());
+            (d.head || d.body).appendChild(s);
+        })();
+    </script>
+    <noscript>要查看<a href="http://disqus.com/?ref_noscript"> Disqus </a>评论，请启用 JavaScript</noscript>
+    
+  
+  
+  
+  
+</section>
 
-
-</div>
 
             <section class="footer">
     <footer>
