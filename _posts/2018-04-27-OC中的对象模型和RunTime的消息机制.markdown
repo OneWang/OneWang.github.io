@@ -4,10 +4,10 @@ title: OC中的对象模型和RunTime的消息机制
 date: 2016-02-16 15:32:24.000000000 +09:00
 ---
 
-###1.ISA指针
+### 1.ISA指针
 OC是一门面向对象的编程语言,每一个对象都是一个类的一个实例;在 Objective-C 语言的底层定义中，每一个对象都有一个名为 isa 的指针，指向该对象的类。每一个类描述了一系列它的实例特点，包括成员变量，成员方法等。每一个对象都可以接受消息，而对象能够接收的消息列表是保存在它所对应的类中。
 ![ISA内部结构.png](http://upload-images.jianshu.io/upload_images/1867963-5c2fdb116ccd9370.png?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240)
-###2.类对象的结构
+### 2.类对象的结构
 按照面向对象语言的设计原则，所有事物都应该是对象（严格来说 Objective-C 并没有完全做到这一点，因为它有 int, double 这样的简单变量类型）。在 Objective-C 语言中，每一个类实际上也是一个对象(类对象)。每一个类也有一个名为 isa 的指针。每一个类也可以接受消息.例如[NSObject new]，就是向 NSObject 这个类发送名为new消息;
 ![类结构体.png](http://upload-images.jianshu.io/upload_images/1867963-6d4e270fc7fb7f03.png?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240)
 因为类也是一个对象，那它也必须是另一个类的实现，这个类就是元类 (metaclass)。元类保存了类方法和属性的列表。当一个类方法被调用时，元类会首先查找它本身是否有该类方法的实现，如果没有，则该元类会向它的父类查找该方法，直到一直找到继承链的头。
@@ -19,7 +19,7 @@ OC是一门面向对象的编程语言,每一个对象都是一个类的一个�
 相对的，对象的方法定义都保存在类的可变区域中。Objective-C 2.0 并未在头文件中将实现暴露出来，但在 Objective-C 1.0 中，我们可以看到方法的定义列表是一个名为 methodLists的指针的指针（如下图所示）。通过修改该指针指向的指针的值，就可以实现动态地为某一个类增加成员方法。这也是Category实现的原理。同时也说明了为什么Category只可为对象增加成员方法，却不能增加成员变量。
 ![类对象结构.png](http://upload-images.jianshu.io/upload_images/1867963-3b992c05b8e13ab7.png?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240)
 
-###3.消息传递和转发机制
+### 3.消息传递和转发机制
 消息机制原理：对象根据方法编号SEL去映射表查找对应的方法实现;
 
 SEL又叫选择器，是表示一个方法的selector的指针,映射方法的名字。Objective-C在编译时，会依据每一个方法的名字、参数序列，生成一个唯一的整型标识(Int类型的地址)，这个标识就是SEL。
@@ -65,14 +65,14 @@ obj_msgSend 发消息流程：
 
 [receiver message]调用方法时，如果在message方法在receiver对象的类继承体系中没有找到方法，那怎么办？一般情况下，程序在运行时就会Crash掉，抛出 unrecognized selector sent to …类似这样的异常信息。但在抛出异常之前，还有三次机会按以下顺序让你拯救程序。
 
-#####Method Resolution
+##### Method Resolution
 首先Objective-C在运行时调用+ resolveInstanceMethod:或+ resolveClassMethod:方法，让你添加方法的实现。如果你添加方法并返回YES，那系统在运行时就会重新启动一次消息发送的过程。如果resolveInstanceMethod方法返回NO，运行时就跳转到下一步：消息转发(Message Forwarding)
-#####Fast Forwarding
+##### Fast Forwarding
 如果目标对象实现- forwardingTargetForSelector:方法，系统就会在运行时调用这个方法，只要这个方法返回的不是nil或self，也会重启消息发送的过程，把这消息转发给其他对象来处理。否则，就会继续Normal Fowarding。这里叫Fast，是因为这一步不会创建NSInvocation对象，但Normal Forwarding会创建它，所以相对于更快点。
-#####Normal Forwarding
+##### Normal Forwarding
 如果没有使用Fast Forwarding来消息转发，最后只有使用Normal Forwarding来进行消息转发。它首先调用methodSignatureForSelector:方法来获取函数的参数和返回值，如果返回为nil，程序会Crash掉，并抛出unrecognized selector sent to instance异常信息。如果返回一个函数签名，系统就会创建一个NSInvocation对象并调用-forwardInvocation:方法。
 
-###三种方法的区别
+### 三种方法的区别
 Method Resolution：由于Method Resolution不能像消息转发那样可以交给其他对象来处理，所以只适用于在原来的类中代替掉。
 Fast Forwarding：它可以将消息处理转发给其他对象，使用范围更广，不只是限于原来的对象。
 Normal Forwarding：它跟Fast Forwarding一样可以消息转发，但它能通过NSInvocation对象获取更多消息发送的信息，例如：target、selector、arguments和返回值等信息。
