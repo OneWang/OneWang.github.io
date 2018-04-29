@@ -1,0 +1,87 @@
+---
+layout: post
+title: RunLoop的理解
+date: 2016-04-02
+---
+
+### RunLoop的基本作用:
+RunLoop的理解
+RunLoop顾名思义就是跑圈，其本质就是一个do，while循环，当有事做时就做事，没事做时就休眠。
+
+Runloop实际就是一个对象，这个对象管理了其需要处理的事件和消息，并提供了一个入口函数来执行上面的event loop的逻辑。线程执行了这个函数后，就会一直处于这个函数内部“接收消息->等待->处理”的循环中，直到这个循环结束，函数返回；
+
+### RunLoop与线程之间的联系
+线程和RunLoop是以字典的形式存储的,线程为key, RunLoop为value;
+
+每个线程都有一个RunLoop，主线程的RunLoop会在App运行时自动运行，子线程中需要手动获取运行，第一次获取时，才会创建；线程刚创建时并没有RunLoop，如果你不主动获取，那它一直都不会有。你只能在一个线程内部获取其RunLoop（主线程除外）。
+苹果开发的接口中并没有直接创建RunLoop的接口，如果需要使用RunLoop通常CFRunLoopGetMain()和CFRunLoopGetCurrent()两个方法来获取，通过代码不难发现其实只有当我们使用线程的方法主动getRunLoop时才会在第一次创建该线程的RunLoop，同时将保存在全局的Dictionary中（线程和RunLoop二者一一对应），默认情况下线程并不会创建RunLoop（主线程的RunLoop比较特殊，任何线程创建之前都会保证主线程已经存在RunLoop），同时在线程结束的时候也会销毁对应的RunLoop。
+
+RunLoop的应用：
+1.滑动优化和图片的刷新；
+2.常驻子线程；
+
+Autoreleasepool 和 RunLoop 关系
+主线程默认为我们开启Runloop，Runloop会自动帮我们创建Autoreleasepool，并进行Push/pop等操作来进行内存管理；每个线程都会维护自己的autoreleasepool堆栈。换句话说autoreleasepool是与线程金币相关的，每一个autoreleasepool只对应一个线程；注意：只有主线程的RunLoop会默认启动；也就意味着会自动创建自动释放池，子线程需要在线程调度方法中手动添加自动释放池；
+
+autoreleasePool是怎么实现的？
+
+1.autoreleasePool并没有单独的结构，而是由若干个AutoreleasePoolPage以双向链表的形式组合而成（分别对应结构中parentz指针和child指针）；
+2.AutoreleasePool是按线程一一对应的；
+3.AutoreleasePoolPage每个对象会开辟4096字节n内存（也就是虚拟内存一页的大小），除了上面的实例变量所占内存，剩下的空间全部用来存储Autorelease对象的地址；
+4.上面的id *next指针作为游标指向栈顶最新add进来的autorelease对象的下一个位置
+5.一个AutoreleasePoolPage的空间被占满时，会新建一个AutoreleasePoolPage对象，连接链表，后来的autorelease对象在新的page加入；
+
+`Autorelease对象什么时候释放？`
+在没有手动添加autorelease pool的情况下，Autorelease对象是在当前的runloop迭代结束时释放的，而它能够释放的原因是系统在每个runloop迭代中都加入了自动释放池push和pop；
+
+### iOS中有两套API访问和使用RunLoop
+Foundation                     NSRunLoop
+Core Foundation             CFRunLoopRef
+
+NSRunLoop是基于CFRunLoopRef的一层OC包装;
+
+### RunLoop的相关类
+Core Foundation中关于RunLoop的五个类     
+
+- CFRunLoopRef
+- CFRunLoopModeRef
+- CFRunLoopSourceRef
+- CFRunLoopTimerRef
+- CFRunLoopObserverRef
+
+如果RunLoop中没有
+CFRunLoopModeRef,CFRunLoopSourceRef,CFRunLoopTimerRef, CFRunLoopObserverRef中的一个,那么这个RunLoop就会暂停;因为RunLoop属于事件驱动类型的;
+
+### CFRunLoopModeRef系统默认注册了5个Mode
+RunLoop的运行模式：
+* NSDefaultRunLoopMode:默认的运行模式，除了NSConnection对象的事件。
+* NSRunLoopCommonModes:是一组常用的模式集合，将一个input source关联到这个模式集合上，等于将input source关联到这个模式集合中的所有模式上。在iOS系统中NSRunLoopCommonMode包含NSDefaultRunLoopMode、NSTaskDeathCheckMode、UITrackingRunLoopMode。
+* UITrackingRunLoopMode: 用于跟踪触摸事件触发的模式（例如UIScrollView上下滚动），主线程当触摸事件触发时会设置为这个模式，可以用来在控件事件触发过程中设置Timer。
+* GSEventReceiveRunLoopMode: 用于接受系统事件，属于内部的Run Loop模式。
+* 自定义Mode：可以设置自定义的运行模式Mode，你也可以用CFRunLoopAddCommonMode添加到NSRunLoopCommonModes中。
+注意：
+Run Loop运行时只能以一种固定的模式运行，如果我们需要它切换模式，只有停掉它，再重新开启它。
+运行时它只会监控这个模式下添加的Timer Source和Input Source，如果这个模式下没有相应的事件源，Run Loop的运行也会立刻返回的。注意Run Loop不能在运行在NSRunLoopCommonModes模式，因为NSRunLoopCommonModes其实是个模式集合，而不是一个具体的模式，我可以在添加事件源的时候使用NSRunLoopCommonModes，只要Run Loop运行在NSRunLoopCommonModes中任何一个模式，这个事件源都可以被触发。
+
+每个mode中又包含若干个source0（触摸事件，performselectors）/source1（基于port的线程通信）/timer/observer；
+
+### CFRunLoopSourceRef是事件源(输入源)
+按照官方文档,source的分类:
+- Port-Based Sources
+- Custom Input Sources
+- Coaoa Perform Selector Sources
+
+按照函数的调用栈,source的分类:
+- Source0:非基于Port的
+- Source1:基于Port的,通过内核和其它线程通信,接受,分发系统事件;
+
+### CFRunLoopObserverRef是观察者,能够监听RunLoop的状态改变
+可以监听的时间点有以下几个:
+![CFRunLoopActivity/文](http://upload-images.jianshu.io/upload_images/1867963-7758ce3412af4cd0.png?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240)
+
+### RunLoop在开发中如何使用和使用的场景
+- 开启常驻线程(让一个子线程不进入不进入消亡状态,等待其他线程发来消息处理其他事件;给子线程开启一个runloop 让其一直运行);
+- 在子线程中开启一个定时器
+- 可以控制定时器(某些事件,行为,任务)在特定模式下执行;比如监听点击事件的处理(在所有点击事件之前做一些事情)
+- ImageView的显示(从网络上获取图片的时候,异步请求图片,回到主线程设置图片,在滑动的时候会卡顿,可以设置图片只在kCFRunLoopDefaultMode模式下设置,其它模式的时候不设置推按);
+- 自动释放池在RunLoop进入休眠的时候就会销毁;

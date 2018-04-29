@@ -1,0 +1,54 @@
+---
+layout: post
+title: Category的实质
+date: 2016-04-12
+---
+
+### Category真面目
+Category的另外两个使用场景：
+* 可以将类的实现分开在不同的文件里面。这样做的几个好处：a)可以减少单个文件的体积；b)可以把不同的功能组织到不同的Category里；c)可以由多个开发者共同完成一个类；d)可以按需加载想要的Category等；
+* 声明私有方法；
+除了Apple推荐的使用场景，广大开发者脑洞大开，还衍生出了Category的其他几个使用场景：
+* 模拟多继承
+* 把framework的私有方法公开
+
+我们知道在Object-C中所有的类和对象在runtime层都是使用结构体来表示的, Category用结构体表示如下:
+![Category的结构体表示.png](http://upload-images.jianshu.io/upload_images/1867963-37982ef89a6a268d.png?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240)
+从category的定义也可以看出category可以添加实例方法，类方法，甚至可以实现协议;
+
+### 注意点：
+- 1)、Category的方法没有“完全替换掉”原来类已有的方法，也就是说如果Category和原来类都有methodA，那么Category附加完成之后，类的方法列表里会有两个methodA;
+- 2)、Category的方法被放到了新方法列表的前面，而原来类的方法被放到了新方法列表的后面，这也就是我们平常所说的Category的方法会“覆盖”掉原来类的同名方法，也就是分类的方法优先级高于原来类中方法的优先级;这是因为运行时在查找方法的时候是顺着方法列表的顺序查找的，它只要一找到对应名字的方法，就会停止，其实后面可能还有一样名字的方法。
+
+我们知道，在类和Category中都可以有+load方法，那么有两个问题：
+1)、在类的+load方法调用的时候，我们可以调用category中声明的方法么？
+2)、这些个+load方法，调用顺序是咋样的呢？
+
+>1)、可以调用，因为附加Category到类的工作会先于+load方法的执行
+>2)、+load的执行顺序是先类，后Category，而Category的+load执行顺序是根据编译顺序决定的。
+
+###关联对象属性
+```
+- (void)setAssociatedObject:(id)associatedObject{
+    objc_setAssociatedObject(self, @selector(associatedObject), associatedObject, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
+}
+- (id)associatedObject{
+    return objc_getAssociatedObject(self, _cmd);
+}
+```
+关联对象结束的时候不必手动调用objc_removeAssociatedObjects方法，因为在对象销毁的时候会自动调用dispose进行销毁；
+
+### Category总结
+给系统原有类添加方法,但是不能够扩展属性;如果Category中的方法名和系统的方法名一样,在调用的时候优先级更高;
+
+extension看起来很像一个匿名的category，但是extension和有名字的category几乎完全是两个东西。 extension在编译期决议，它就是类的一部分，在编译期和头文件里的@interface以及实现文件里的@implement一起形成一个完整的类，它伴随类的产生而产生，亦随之一起消亡。extension一般用来隐藏类的私有信息，你必须有一个类的源码才能为一个类添加extension，所以你无法为系统的类比如NSString添加extension;
+
+但是category则完全不一样，它是在运行期决议的。就category和extension的区别来看，我们可以推导出一个明显的事实extension可以添加实例变量，而category是无法添加实例变量的（因为在运行期，对象的内存布局已经确定，如果添加实例变量就会破坏类的内部布局，这对编译型语言来说是灾难性的）;
+
+继承:多个类具有相同的实例变量和方法的时候考虑使用继承;
+
+Category和继承的区别:
+- 类别是对方法的扩展,不能添加成员变量.继承可以在原来父类的成员变量的基础上添加新的成员变量;
+- 类别只能添加新的成员方法,不能修改和删除原来的方法;继承可以增加,修改和删除方法;
+- 类别不提倡对原有的方法进行重载;继承可以通过使用super对原来的方法进行重载;
+- 类别可以被继承,如果一个父类中定义了类别,那么继承它的子类也会继承此类别;

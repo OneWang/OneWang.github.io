@@ -1,7 +1,7 @@
 ---
 layout: post
 title: OC内存管理
-date: 2016-02-16 15:32:24.000000000 +09:00
+date: 2016-03-25
 ---
 
 内存管理的作用:实质就是管理堆(自己申请,自己释放)空间上的内存;在恰当的时候销毁对象的内存空间;合理使用内存,保证程序的高效运行;
@@ -22,20 +22,18 @@ ARC:iOS5.0/Mac OS X 10.7之后引入了自动内存管理机制----自动引用�
 
 #### 符合内存管理原则的setter方法的写法:
 ```
-- (void)setName:(NSString *)name
-{
-if(_name != name){
-[_name release];
-_name = [name retain];
-}
+- (void)setName:(NSString *)name{
+    if(_name != name){
+        [_name release];
+        _name = [name retain];
+    }
 }
 
-- (void)setName:(NSString *)name
-{
-if(_name != name){
-[_name release];
-_name = [name copy];
-}
+- (void)setName:(NSString *)name{
+    if(_name != name){
+        [_name release];
+        _name = [name copy];
+    }
 }
 ```
 #### @synthesize和@dynamic分别有什么作用?
