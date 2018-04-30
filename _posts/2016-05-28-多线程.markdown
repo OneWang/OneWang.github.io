@@ -1,0 +1,650 @@
+---
+layout: post
+title: 多线程
+date: 2016-05-28
+---
+
+## 多线程
+什么是多线程?
+多线程就是一个进程中可以开启多条线程,每条线程可以并行执行不同的任务,提高执行效率;一个基本概念就是同时对多个任务加以控制;
+
+多线程分为主线程和子线程;一个iOS程序运行后，默认会开启1条线程，称为“主线程”或“UI线程”;主线程的主要作用显示\刷新UI界面\处理UI事件（比如点击事件、滚动事件、拖拽事件等）;子线程主要用来做一些耗时操作;
+
+每一个iOS应用程序中都有一个主线程用来更新UI界面、处理用户的触摸事件、解析网络下载的数据，因此不能把一些太耗时的操作(比如网络下载数据)放在主线程中执行，不然会造成主线程堵塞(出现界面卡死，防止界面假死)，带来极坏的用户体验。
+iOS的解决方案就是将那些耗时的操作放到另外一个线程中去执行，多线程异步执行是防止主线程堵塞，增加运行效率的最佳方法;
+
+##### 多线程的工作原理:
+- 同一时间，CPU只能处理1条线程，只有1条线程在工作（执行）
+- 多线程并发（同时）执行，其实是CPU快速地在多条线程之间调度 （切换）
+- 如果CPU调度线程的时间足够快，就造成了多线程并发执行的假象
+
+##### 多线程的优缺点:
+优点:
+- 能适当提高程序的执行效率
+- 能适当提高资源利用率（CPU、内存利用率）
+
+缺点: 
+- 开启线程需要占用一定的内存空间（默认情况下，主线程占用1M，子线程占用512KB），如果开启大量的线程，会占用大量的内存空间，降低程序的性能
+- 线程越多，CPU在调度线程上的开销就越大
+- 程序设计更加复杂：比如线程之间的通信、多线程的数据共享
+- 数据库访问的安全问题
+
+##### 多线程的使用场合:
+- 异步下载数据，是多线程技术的一个比较常见的应用场景
+- APP中有耗时的操作或功能(1、从数据库中一次性读取大量数据 2、对大量数据的解析过程)，需要在主线程之外，单独开辟一个新的线程(子线程/工作线程)来执行
+
+##### 多线程创建方式:
+> pthread
+> NSThread
+> GCD
+> NSOperation & NSOperationQueue
+
+| 创建方式        | 使用简介           | 所用语言  |生命周期管理|使用频率|
+| ------------- |:-------------:| -----:| -----:| -----:|
+| pthread      | 一套通用的多线程API;跨平台\可移植;使用难度大 | C |程序员管理|几乎不用|
+| NSThread      | 使用更加面向对象;可直接操作现场对象      |   OC |程序员管理|偶尔使用|
+| GCD | 充分利用设备的多核问题      |   C |自动管理|经常使用|
+| NSOperation | 基于 GCD(底层是 GCD)  ;比 GCD 多一些方法和功能    |  OC |自动管理|经常使用|
+
+### pthread
+这是一套在很多操作系统上都通用的多线程API，所以移植性很强，当然在 iOS 中也是可以的。不过这是基于 c语言 的框架，同时也适用于Unix\Linux\Windows等系统;使用难度比较大;
+###### 使用流程:
+首先导入头文件:
+> #######import <pthread.h>
+
+创建线程,执行耗时操作
+```
+//1.创建一个pThread 变量（就是一个线程）
+pthread_t pthread;
+
+//2.通过pthread_create函数创建一个pthread_t，给pthread变量赋值
+/**
+参数:
+1.传入一个pthread_t类型的变量的地址
+2.线程属性，默认给NULL
+3.传入一个C语言的函数名，其实就是需要执行的耗时操作
+4.给func传参
+*/
+//__bridge桥联（桥接）
+//在ARC中将id 临时转换成void*。（在MRC中在这儿不需要__bridge来进行转换）
+//str的所有权属不变，只是临时被借出去用了一下
+//ARC的本质，属于编译器。在编译的时候会在适当的地方给代码添加retain,release,autorelese
+NSString * str = @"Tom";
+pthread_create(&pthread, NULL, func, (__bridge void *)(str));
+
+//耗时操作函数
+void * func(void * a){
+    //在这个函数中写耗时操作
+    NSLog(@"%@-----%@",[NSThread currentThread],a);
+    return NULL;
+}
+```
+打印输出结果:
+
+![打印结果](http://upload-images.jianshu.io/upload_images/1867963-0342170292951f28.png?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240)
+
+```pThread```创建线程的基本使用就这么多,因为在 iOS 开发中几乎不使用,其它的在这里也不多做介绍了;想了解其它的可以自己动手查一些相关的资料;
+
+### NSThread
+```NSThread```是经过苹果封装后的，并且完全面向对象的。因此可以直接操控线程对象，非常直观和方便。但是，它的生命周期还是需要我们手动管理，所以这套方案也是偶尔用用，比如 ```[NSThread currentThread]```，它可以获取当前线程类，你就可以知道当前线程的各种属性，十分方便调试。
+#### 创建和启动
+```
+//1.创建一个NSThread对象
+NSThread * th = [[NSThread alloc] initWithTarget:self selector:@selector(longTimeOperation) object:nil];
+//2.开启线程;线程一启动就会在线程thread中执行self的longTimeOperation方法
+[th start];
+```
+#### 其它创建并启动的方法
+```
+//创建线程后自动启动线程
+/**
+参数:
+1.需要在子线程中执行的操作的方法
+2.来调用这个方法(子线程中执行的操作的方法)的对象
+3.这个方法的参数
+*/
+[NSThread detachNewThreadSelector:@selector(run) toTarget:selfwithObject:nil];
+
+//隐式创建并启动线程
+//将一个耗时操作放到后台线程中（后台线程也属于子线程）
+//后台线程不是进程一开始运行的时候自动创建的线程，只是说我在这儿创建的子线程的优先级属于后台线程的优先级(也就是说创建一个优先级最低的线程)
+[self   performSelectorInBackground:@selector(run) withObject:nil];
+
+//比较三种线程创建形式：
+//后两种是快速创建线程，优点是快速，不需要手动的开启；缺点是不能拿到线程对象，没有办法对线程的属性进行设置
+//第一种的优点是可以拿到线程对象；缺点是需要手动开启
+```
+
+#### 其它方法和属性
+```
+//主线程相关用法
++ (NSThread*)mainThread;//获得主线程
+- (BOOL)isMainThread;//是否为主线程
++ (BOOL)isMainThread;//是否为主线程
+
+//线程的调度优先级
++ (double)threadPriority;
++ (BOOL)setThreadPriority:(double)p;
+- (double)threadPriority;
+- (BOOL)setThreadPriority:(double)p;
+//调度优先级的取值范围是0.0 ~1.0，默认0.5，值越大，优先级越高
+//自己开发时，建议一般不要修改优先级
+
+//线程的名字
+- (void)setName:(NSString*)n;
+- (NSString *)name;
+
+//获得当前线程
+NSThread *current = [NSThread currentThread];
+
+//使当前线程暂停一段时间，或者暂停到某个时刻
++ (void)sleepForTimeInterval:(NSTimeInterval)time;
++ (void)sleepUntilDate:(NSDate *)date;
+
+//判断某个线程的状态的属性
+@property (readonly, getter=isExecuting) BOOL executing NS_AVAILABLE(10_5, 2_0);
+@property (readonly, getter=isFinished) BOOL finished NS_AVAILABLE(10_5, 2_0);
+@property (readonly, getter=isCancelled) BOOL cancelled NS_AVAILABLE(10_5, 2_0);
+
+//线程的强制退出,取消;
++ (void)exit;
+- (void)cancel;
+```
+#### 线程的各种状态的切换
+
+![线程的各种状态的切换](http://upload-images.jianshu.io/upload_images/1867963-776f12e487fe0592.png?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240)
+>（新建）、就绪、运行、阻塞、死亡
+>就绪：在可调度线程池里面，处于等待被调度的状态(start)
+>运行：在可调度线程池里面，处于正在被调度的状态(线程中的任务正在被执行)
+>阻塞：不在可调度线程池里，但是还存在内存中，处于暂停/休眠等待再次被唤醒(唤醒后会再次被添加到可调度线程池里面)
+>死亡：不在可调度线程池中，也不在内存中。不能再次添加到可调度线程池
+
+### GCD(Grand Central Dispatch)
+全称是Grand Central Dispatch，可译为“牛逼的中枢调度器”
+纯C语言，提供了非常多强大的函数;不过由于使用了 Block，使得使用起来更加方便，而且灵活。
+GCD的优势:
+- GCD是苹果公司为多核的并行运算提出的解决方案,会自动利用更多的CPU内核（比如双核、四核）
+- GCD会自动管理线程的生命周期（创建线程、调度任务、销毁线程）,更快的内存效率,因为线程栈不暂存与应用内存中;
+- GCD提供了自动的和全面的线程池管理机制,稳定而便捷;提供了直接并且简单的调用接口,使用方便准确.(程序员只需要告诉GCD想要执行什么任务，不需要编写任何线程管理代码)。
+
+### 任务和队列
+>两个核心概念：
+1.任务:需要执行操作（想要做的事情）
+2.队列:用来存放任务
+
+>任务的执行分为：同步和异步两种
+队列分为：串行队列和并行队列
+同步：在当前线程中执行，不会开新线程;同时它会阻塞当前线程并等待 Block 中的任务执行完毕，然后当前线程才会继续往下运行。
+异步：会开新的线程，任务在新的线程中执行;当前线程会直接往下执行，它不会阻塞当前线程。
+串行：顺序，一个一个的执行（一个执行完才执行下一个）
+并行：多个任务同时执行（可以将队列中的任务全部取出来，只要线程就可以被执行）
+
+#### GCD的使用的2个步骤
+>1.定制任务
+确定想做的事情
+2.将任务添加到队列中
+GCD会自动将队列中的任务取出，放到对应的线程中执行
+任务的取出遵循队列的FIFO原则：**先进先出，后进后出**
+
+GCD 将任务放到串行队列会遵循队列的FIFO原则取出来一个，执行一个，然后取下一个，这样一个一个的执行。
+
+GCD 将任务放到并行队列的任务，GCD 也会 遵循队列的FIFO原则取出来，但不同的是，它取出来一个就会放到别的线程，然后再取出来一个又放到另一个的线程。这样由于取的动作很快，忽略不计，看起来，所有的任务都是一起执行的。不过需要注意，GCD 会根据系统资源控制并行的数量，所以如果任务很多，它并不会让所有任务同时执行。
+
+#### 创建队列
+- **主队列:**主队列是一个特殊的串行队列。放在主队列中的任务，都会放到主线程中执行;它主要用于刷新 UI\用户的交互等，任何需要刷新 UI 的工作都要在主队列执行，所以一般耗时任务都要放到子线程执行。
+```
+//获取主队列
+dispatch_queue_t queue = dispatch_get_main_queue();
+``` 
+- **手动创建队列:**
+```
+//创建串行队列
+//参数：1.标签（队列的名字）2.队列属性（串行/并行）
+//DISPATCH_QUEUE_SERIAL = NULL 串行
+dispatch_queue_t queue = dispatch_queue_create("OneWang", NULL);
+dispatch_queue_t queue = dispatch_queue_create("OneWang", DISPATCH_QUEUE_SERIAL);
+dispatch_release(queue);//非ARC需要释放手动创建的队列
+
+//创建并行队列
+//DISPATCH_QUEUE_CONCURRENT 并行
+dispatch_queue_t queue = dispatch_queue_create("OneWang", DISPATCH_QUEUE_CONCURRENT);
+```
+
+- **全局并行队列:**GCD默认已经提供了全局的并发队列，供整个应用使用，不需要手动创建;
+
+```
+//使用dispatch_get_global_queue函数获得全局的并发队列
+//参数：1.队列的优先级：一般使用默认的0   2.是苹果预留的一个参数,暂时无用，用0即可
+dispatch_queue_tdispatch_get_global_queue(dispatch_queue_priority_t priority,unsigned long flags);
+
+//获得全局并发队列
+dispatch_queue_t queue = dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0);
+dispatch_queue_t queue = dispatch_get_global_queue(0, 0);
+
+全局并发队列的优先级
+#define DISPATCH_QUEUE_PRIORITY_HIGH 2 // 高
+#define DISPATCH_QUEUE_PRIORITY_DEFAULT 0 // 默认（中）
+#define DISPATCH_QUEUE_PRIORITY_LOW (-2)// 低
+#define DISPATCH_QUEUE_PRIORITY_BACKGROUND INT16_MIN // 后台
+```
+
+#### 创建任务
+
+```
+//同步任务;它会阻塞当前线程并等待 Block 中的任务执行完毕，然后当前线程才会继续往下运行。
+dispatch_sync(queue, ^{
+    NSLog(@"%@", [NSThread currentThread]);
+});
+//异步任务;任务在新的线程中执行;当前线程会直接往下执行，它不会阻塞当前线程。
+dispatch_async(queue, ^{
+    NSLog(@"%@", [NSThread currentThread]);
+});
+```
+
+```
+//经典面试题:
+- (void)viewDidLoad
+{
+    [super viewDidLoad];
+    NSLog(%"1");
+    dispatch_sync(dispatch_get_main_queue(), ^{
+        NSLog(@"2");
+    })
+    NSLog(@"3");
+}
+输出结果想必大家应该都知道,最终只会输出1;这是为什么呢?
+
+因为打印完第一句后，dispatch_sync 立即阻塞当前的主线程，然后把 Block 中的任务放到 
+main_queue 中，可是 main_queue 中的任务会被取出来放到主线程中执行，但主线程这个时候
+已经被阻塞了，所以 Block 中的任务就不能完成，它不完成，dispatch_sync 就会一直阻塞主
+线程，这就是死锁现象。导致主线程一直卡死。
+```
+
+#### 暂停和继续queue
+我们可以使用```dispatch_suspend```函数暂停一个queue以阻止它执行block对象;使用```dispatch_resume```函数继续dispatch queue。调用dispatch_suspend会增加queue的引用计数,调用`dispatch_resume`则减少queue的引用计数。当引用计数大于0时,queue就保持挂起状态。因此你必须对应地调用suspend和resume函数。挂起和继续是异步的,而且只在执行block之间（比如在执行一个新的block之前或之后）生效。挂起一个queue不会导致正在执行的block停止。
+#### 队列组
+队列组可以将很多队列添加到一个组里，这样做的好处是，当这个组里所有的任务都执行完了，队列组会通过一个方法通知我们;
+```
+//创建一个队列组
+dispatch_group_t group = dispatch_group_create();
+//将全局队列中的耗时操作加队列组中
+dispatch_group_async(group,dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{ 
+//执行1个耗时的异步操作
+});
+
+dispatch_group_async(group,dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
+//执行1个耗时的异步操作
+});
+//队列组执行完毕的时候回自动通知
+dispatch_group_notify(group,dispatch_get_main_queue(),
+^{ 
+//等前面的异步操作都执行完毕后，回到主线程...
+});
+```
+#### 线程安全问题dispatch_barrier_async
+1.如果要防止资源的抢夺,得使用 synchronized 进行加锁保护;
+2.使用 GCD 的dispatch_barrier_async的作用便是在并发队列中，完成在它之前提交到队列中的任务后打断，单独执行其block。起到了一个线程锁的作用。
+```
+- (void)dispatch_barrier{
+dispatch_queue_t queue = dispatch_queue_create("com.meeting.queue", DISPATCH_QUEUE_CONCURRENT);
+dispatch_async(queue, ^{
+    NSLog(@"前面的先执行，执行完毕后后面的才能执行");
+});
+dispatch_barrier_async(queue, ^{
+    NSLog(@"中间等待时间");
+});
+dispatch_async(queue, ^{
+    NSLog(@"前面的已经执行完毕，开始执行后面的");
+});
+```
+
+#### dispatch_set_target_queue设置队列的优先级
+1.改变队列的优先级；
+```
+//需求：生成一个后台的串行队列
+- (void)changePriority{
+dispatch_queue_t queue = dispatch_queue_create("queue", NULL);
+dispatch_queue_t bgQueue = dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_BACKGROUND, 0);
+//第一个参数：需要改变优先级的队列；
+//第二个参数：目标队列;
+//就是讲第一个队列的优先级指定为和第二个队列的优先级相同；
+//注意：第一个参数如果指定系统提供的Main Queue和Global Queue则不知道会发生什么情况，因此这些均不可以指定；
+dispatch_set_target_queue(queue, bgQueue);
+}
+```
+2.防止多个队列的并发执行；
+```
+//多个串行队列，设置了target queue
+NSMutableArray *array = [NSMutableArray array];
+dispatch_queue_t serial_queue_target = dispatch_queue_create("queue_target", NULL);
+for (NSInteger index = 0; index < 5; index ++) {
+    //分别给每个队列设置相同的target queue  
+    dispatch_queue_t serial_queue = dispatch_queue_create("serial_queue", NULL);
+    dispatch_set_target_queue(serial_queue, serial_queue_target);
+    [array addObject:serial_queue];
+}
+[array enumerateObjectsUsingBlock:^(dispatch_queue_t queue, NSUInteger idx, BOOL * _Nonnull stop) {
+    dispatch_async(queue, ^{
+        NSLog(@"任务%ld",idx);
+    });
+}];
+```
+
+#### GCD 的底层实现原理概述:
+GCD有一个底层线程池，这个池中存放的是一个个的线程。之所以称为“池”，很容易理解出这个“池”中的线程是可以重用的，当一段时间后这个线程没有被调用的话，这个线程就会被销毁。注意：开多少条线程是由底层线程池决定的（线程建议控制再3~5条），池是系统自动来维护，不需要我们程序员来维护;我们只关心的是向队列中添加任务，队列调度即可。
+
+#### iOS常见的延时执行有3种方式:
+```
+//调用NSObject的方法
+[self performSelector:@selector(run) withObject:nil afterDelay:2.0];
+//2秒后再调用self的run方法
+
+//使用GCD函数;需要注意的是dispatch_after仅表示在指定时间后提交任务，而非执行任务。
+dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(2.0* NSEC_PER_SEC)), dispatch_get_main_queue(),
+^{
+//2秒后异步执行这里的代码... 
+});
+
+//使用NSTimer
+[NSTimer scheduledTimerWithTimeInterval:2.0 target:self selector:@selector(test) userInfo:nil repeats:NO];
+```
+
+#### GCD 定时器
+平时我们所使用的 NSTimer 定时器容易受 RunLoop模式和线程的影响会导致定时器的计时不够准确,这个时候我们可以使用 GCD 的定时器,它不受 RunLoop 的模式的影响,同时也是线程的安全的,因此 GCD 的定时器是最准确的;
+```
+/** 定时器(这里不用带*,因为dispatch_source_t就是一个类,内部已经包含了*) */
+@property (strong, nonatomic) dispatch_source_t timer;
+
+//获得队列
+dispatch_queue_t queue = dispatch_get_global_queue(0, 0);
+
+//创建一个 GCD 的定时器dispatch_source_t本质还是 OC 对象
+self.timer = dispatch_source_create(DISPATCH_SOURCE_TYPE_TIMER, 0, 0, queue);
+
+//设置定时器的各种属性(什么时候开始任务,每隔多久执行一次)
+//GCD 的时间参数,一般是纳秒(1秒 == 10的9次方纳秒)
+//何时开始执行第一个任务
+//dispatch_time(DISPATCH_TIME_NOW, (int64_t)(3.0 * NSEC_PER_SEC))比当前时间晚3秒
+dispatch_time_t start = dispatch_time(DISPATCH_TIME_NOW, (3.0 * NSEC_PER_SEC));
+uint64_t interval = (2.0 * NSEC_PER_SEC);
+dispatch_source_set_timer(self.timer, start, interval, 0);
+
+//设置回调
+dispatch_source_set_event_handler(self.timer, ^{
+NSLog(@"%@",[NSThread currentThread]);
+    NSLog(@"=========");
+count ++;
+if (count == 4) {
+//取消定时器
+dispatch_cancel(self.timer);
+    self.timer = nil;
+}
+});
+
+//启动定时器
+dispatch_resume(self.timer);
+```
+#### 单例模式
+单例模式的作用
+可以保证在程序运行过程，一个类只有一个实例，而且该实例易于供外界访问从而方便地控制了实例个数，并节约系统资源;
+
+单例模式的使用场合
+在整个应用程序中，共享一份资源（这份资源只需要创建初始化1次）;
+```
+//ARC中，单例模式的实现
+//在.m中保留一个全局的static的实例
+static id _instance;
+//重写allocWithZone:方法，在这里创建唯一的实例（注意线程安全）
++ (instancetype)allocWithZone:(struct _NSZone *)zone
+{
+static dispatch_once_t
+onceToken;dispatch_once(&onceToken,
+^{
+_instance = [super allocWithZone:zone];
+});
+return _instance;
+}
+
+//提供1个类方法让外界访问唯一的实例
++ (instancetype)sharedInstance
+{
+static dispatch_once_t onceToken;
+dispatch_once(&onceToken,
+^{
+_instance = [[self alloc] init];
+});
+return _instance;
+}
+
+//实现copyWithZone:方法
+- (id)copyWithZone:(struct_NSZone *)zone
+{
+return _instance;
+}
+
+```
+#### 快速迭代
+```
+//使用dispatch_apply函数能进行快速迭代遍历
+dispatch_apply(10,dispatch_get_global_queue(0,0),^(size_t index){
+//执行10次代码，index顺序不确定
+});
+```
+
+#### 信号量
+信号量是一个整数，在创建的时候会有一个初始值，这个初始值往往代表我要控制的同时操作的并发数。在操作中，对信号量会有两种操作：信号通知与等待。信号通知时，信号量会+1，等待时，如果信号量大于0，则会将信号量-1，否则，会等待直到信号量大于0。什么时候会大于零呢？往往是在之前某个操作结束后，我们发出信号通知，让信号量+1；
+
+```
+我们来看看GCD中的三个信号量操作：
+dispatch_semaphore_create：创建一个信号量（semaphore）
+dispatch_semaphore_signal：信号通知，即让信号量+1
+dispatch_semaphore_wait：等待，直到信号量大于0时，即可操作，同时将信号量-1
+```
+
+在使用的时候，往往会创建一个信号量，然后进行多个操作，每次操作都等待信号量大于0再操作，同时信号昂-1，操作完后将信号量+1，类似下面这个过程：
+```
+dispatch_semaphore_t sema = dispatch_semaphore_create(5);
+    for (100次循环操作） {
+        dispatch_semaphore_wait(sema, DISPATCH_TIME_FOREVER);
+        dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
+        // 操作
+            dispatch_semaphore_signal(sema);
+        });
+    }
+```
+上面代码表示我要操作100次，但是控制允许同时并发的操作最多只有5次，当并发量达到5后，信号量就减小到0了，这时候wait操作会起作用，DISPATCH_TIME_FOREVER表示会永远等待，一直等到信号量大于0，也就是有操作完成了，将信号量+1了，这时候才可以结束等待，进行操作，并且将信号量-1，这样新的任务又要等待。
+
+##### 多个请求结束后统一操作
+假设我们一个页面需要同时进行多个请求，他们之间倒是不要求顺序关系，但是要求等他们都请求完毕了再进行界面刷新或者其他什么操作。
+这个需求我们一般可以用GCD的group和notify来做到：
+```
+dispatch_group_t group = dispatch_group_create();
+dispatch_group_async(group, dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
+    //请求1
+    NSLog(@"Request_1");
+});
+dispatch_group_async(group, dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
+    //请求2
+    NSLog(@"Request_2");
+});
+dispatch_group_async(group, dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
+    //请求3
+    NSLog(@"Request_3");
+});
+dispatch_group_notify(group, dispatch_get_main_queue(), ^{
+    //界面刷新
+    NSLog(@"任务均完成，刷新界面");
+});
+```
+notify的作用就是在group中的其他操作全部完成后，再操作自己的内容，所以我们会看到上面三个内容都打印出来后，才打印界面刷新的内容。
+
+但是当将上面三个操作改成真实的网络操作后，这个简单的做法会变得无效，为什么呢？因为网络请求需要时间，而线程的执行并不会等待请求完成后才真正算作完成，而是只负责将请求发出去，线程就认为自己的任务算完成了，当三个请求都发送出去，就会执行notify中的内容，但请求结果返回的时间是不一定的，也就导致界面都刷新了，请求才返回，这就是无效的。
+
+要解决这个问题，我们就要用到上面说的信号量来操作了。
+
+在每个请求开始之前，我们创建一个信号量，初始为0，在请求操作之后，我们设一个dispatch_semaphore_wait，在请求到结果之后，再将信号量+1，也即是dispatch_semaphore_signal。这样做的目的是保证在请求结果没有返回之前，一直让线程等待在那里，这样一个线程的任务一直在等待，就不会算作完成，notify的内容也就不会执行了，直到每个请求的结果都返回了，线程任务才能够结束，这时候notify也才能够执行。伪代码如下：
+```
+dispatch_semaphore_t sema = dispatch_semaphore_create(0);
+[网络请求:{
+成功：dispatch_semaphore_signal(sema);
+失败：dispatch_semaphore_signal(sema);
+}];
+dispatch_semaphore_wait(sema, DISPATCH_TIME_FOREVER);
+```
+
+##### 多个请求顺序执行
+有时候我们需要按照顺序执行多次请求，比如先请求到用户信息，然后根据用户信息中的内容去请求相关的数据，这在平常的代码中直接按照顺序往下写代码就可以了，但这里因为涉及到多线程之间的关系，就叫做线程依赖。
+
+线程依赖用GCD做比较麻烦，建议用NSOperationQueue做，可以更加方便的设置任务之间的依赖。
+```
+// 1.任务一：获取用户信息
+NSBlockOperation *operation1 = [NSBlockOperation blockOperationWithBlock:^{
+    [self request_A];
+}];
+
+// 2.任务二：请求相关数据
+NSBlockOperation *operation2 = [NSBlockOperation blockOperationWithBlock:^{
+    [self request_B];
+}];
+
+// 3.设置依赖
+[operation2 addDependency:operation1];// 任务二依赖任务一
+
+// 4.创建队列并加入任务
+NSOperationQueue *queue = [[NSOperationQueue alloc] init];
+[queue addOperations:@[operation2, operation1] waitUntilFinished:NO];
+```
+一般的多线程操作这样做是可以的，线程2会等待线程1完成后再执行。但是对于网络请求，问题又来了，同样，网络请求需要时间，线程发出请求后即认为任务完成了，并不会等待返回后的操作，这就失去了意义。
+
+要解决这个问题，还是用信号量来控制，其实是一个道理，代码也是一样的，在一个任务操作中;还是去等待请求返回后，才让任务结束。而依赖关系则通过NSOperationQueue来实现。
+### 总结
+其实归根结底，中心思想就是通过信号量，来控制线程任务什么时候算作结束，如果不用信号量，请求发出后即认为任务完成，而网络请求又要不同时间，所以会打乱顺序。因此用一个信号量来控制在单个线程操作内，必须等待请求返回，自己要执行的操作完成后，才将信号量+1，这时候一直处于等待的代码也得以执行通过，任务才算作完成。
+
+通过这个方法，就可以解决由于网络请求耗时特性而带来的一些意想不到的多线程处理的问题。
+### NSOperation & NSOperationQueue
+NSOperation 是苹果公司对 GCD 的封装，完全面向对象，所以使用起来更好理解。 大家可以看到 NSOperation 和 NSOperationQueue 分别对应 GCD 的 任务 和 队列 :
+NSOperation和NSOperationQueue实现多线程的具体步骤:
+1.先将需要执行的操作封装到一个NSOperation对象中
+2.然后将NSOperation对象添加到NSOperationQueue中
+3.系统会自动将NSOperationQueue中的NSOperation取出来
+4.将取出的NSOperation封装的操作放到一条新线程中执行
+
+#### NSOperation的子类
+NSOperation是个抽象类，并不具备封装操作的能力，必须使用它的子类;
+使用NSOperation子类的方式有3种:
+NSInvocationOperation
+NSBlockOperation
+自定义子类继承NSOperation，实现内部相应的方法
+
+#### 添加任务
+1.创建NSInvocationOperation对象
+- -(id)initWithTarget:(id)target selector:(SEL)sel object:(id)arg;
+调用start方法开始执行操作
+- -(void)start;
+一旦执行操作，就会调用target的sel方法
+注意
+- 默认情况下，调用了start方法后并不会开一条新线程去执行操作，而是在当前线程同步执行操作
+- 只有将NSOperation放到一个NSOperationQueue中，才会异步执行操作
+
+2.创建NSBlockOperation对象
++ +(id)blockOperationWithBlock:(void(^)(void))block;
+通过addExecutionBlock:方法添加更多的操作
+- -(void)addExecutionBlock:(void(^)(void))block;
+注意：只要NSBlockOperation封装的操作数 >1，就会异步执行操作
+
+3.自定义Operation
+如果NSInvocationOperation和NSBlockOperation对象不能满足需求, 你可以直接继承NSOperation, 并添加任何你想要的行为。继承所需的工作量主要取决于你要实现非并发还是并发的NSOperation。定义非并发的NSOperation要简单许多,只需要重载-(void)main这个方法，在这个方法里面执行主任务,并正确地响应取消事件; 对于并发NSOperation, 你必须重写NSOperation的多个基本方法进行实现（这里暂时先介绍非并发的NSOperation）;
+自定义NSOperation的步骤
+1.重写- (void)main方法，在里面实现想执行的任务
+2.重写- (void)main方法的注意点
+- 自己创建自动释放池（因为如果是异步操作，无法访问主线程的自动释放池）
+- 经常通过- (BOOL)isCancelled方法检测操作是否被取消，对取消做出响应
+
+operation开始执行之后,会一直执行任务直到完成,或者显式地取消操作。取消可能发生在任何时候,甚至在operation执行之前。尽管NSOperation提供了一个方法,让应用取消一个操作,但是识别出取消事件则是我们自己的事情。如果operation直接终止, 可能无法回收所有已分配的内存或资源。因此operation对象需要检测取消事件,并优雅地退出执行
+NSOperation对象需要定期地调用isCancelled方法检测操作是否已经被取消,如果返回YES(表示已取消),则立即退出执行。不管是自定义NSOperation子类,还是使用系统提供的两个具体子类,都需要支持取消。isCancelled方法本身非常轻量,可以频繁地调用而不产生大的性能损失
+以下地方可能需要调用isCancelled:
+* 在执行任何实际的工作之前
+* 在循环的每次迭代过程中,如果每个迭代相对较长可能需要调用多次
+* 代码中相对比较容易中止操作的任何地方
+
+这个目前只了解这些,以后研究过再来更新吧!
+```
+//1.将操作封装到NSOperation的子类中
+NSInvocationOperation * operation = [[NSInvocationOperation alloc] initWithTarget:self selector:@selector(longTimeOperation:) object:@"Invocation"];
+//2.开始执行操作
+//不会开新的线程
+[operation start];
+
+//1.操作
+NSBlockOperation * operation = [NSBlockOperation blockOperationWithBlock:^{
+//在这儿写耗时操作
+}];
+
+//添加多个Block
+for (NSInteger i = 0; i < 5; i++) {
+[operation addExecutionBlock:^{
+    NSLog(@"第%ld次：%@", i, [NSThread currentThread]);
+}];
+}
+
+//2.开始执行操作
+//不会开新的线程
+[operation start];
+```
+#### 创建队列
+NSOperationQueue的作用
+NSOperation可以调用start方法来执行任务，但默认是同步执行的;
+如果将NSOperation添加到NSOperationQueue（操作队列）中，系统会自动异步执行NSOperation中的操作;
+添加操作到NSOperationQueue中
+- -(void)addOperation:(NSOperation*)operation;
+- -(void)addOperationWithBlock:(void(^)(void))block;
+
+最大并发数的相关方法
+- -(NSInteger)maxConcurrentOperationCount;
+- -(void)setMaxConcurrentOperationCount:(NSInteger)cnt;
+
+取消队列的所有操作
+- -(void)cancelAllOperations;
+提示：也可以调用NSOperation的- (void)cancel方法取消单个操作
+暂停和恢复队列
+- -(void)setSuspended:(BOOL)b;//YES代表暂停队列，NO代表恢复队列
+- -(BOOL)isSuspended;
+
+#### 操作优先级
+设置NSOperation在queue中的优先级，可以改变操作的执行优先级
+- -(NSOperationQueuePriority)queuePriority;
+- -(void)setQueuePriority:(NSOperationQueuePriority)p;
+优先级的取值
+```
+typedef NS_ENUM(NSInteger, NSOperationQueuePriority) {
+    NSOperationQueuePriorityVeryLow = -8L,
+    NSOperationQueuePriorityLow = -4L,
+    NSOperationQueuePriorityNormal = 0,
+    NSOperationQueuePriorityHigh = 4,
+    NSOperationQueuePriorityVeryHigh = 8
+};
+```
+
+#### 操作的监听
+可以通过 KVO监听一个操作的执行完毕
+- -(void(^)(void))completionBlock;
+- -(void)setCompletionBlock:(void(^)(void))block;
+
+#### 操作的依赖关系
+NSOperation之间可以设置依赖来保证执行顺序
+依赖约束的是结束时刻；
+比如一定要让操作A执行完后，才能执行操作B，可以这么写
+```[operationB addDependency:operationA];// 操作B依赖于操作A```
+可以在不同queue的NSOperation之间创建依赖关系
+
+##### 使用依赖关系有三点需要注意:
+1.不要建立循环依赖,会造成死锁,原因和循环引用是一样的;可以使用 ```removeDependency ```来解除依赖关系;
+2.使用依赖建立使用 NSIncocationOperation, NSIncocationOperation和 NSBlockOperation 混用会导致依赖关系无法正常实现;
+3.依赖关系不光在同队列中生效,不同队列的NSOperation对象之间设置的依赖关系一样会生效;
+
+### GCD 和 NSOperationQueue 的区别:
+- GCD 是纯 C 语言的 API, NSOperationQueue是基于 GCD 的 OC 版本封装;
+- GCD 只支持 FIFO 队列, NSOperationQueue可以很方便的设置执行顺序,设置最大并发数;
+- NSOperationQueue可以在 operation 之间设置依赖关系,而 GCD 需要写很多 代码才能实现;
+- NSOperationQueue支持 KVO, 可以检测 operation;
+- GCD 的执行速度比NSOperationQueue块;

@@ -27,7 +27,7 @@ Category的另外两个使用场景：
 >1)、可以调用，因为附加Category到类的工作会先于+load方法的执行
 >2)、+load的执行顺序是先类，后Category，而Category的+load执行顺序是根据编译顺序决定的。
 
-###关联对象属性
+### 关联对象属性
 ```
 - (void)setAssociatedObject:(id)associatedObject{
     objc_setAssociatedObject(self, @selector(associatedObject), associatedObject, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
