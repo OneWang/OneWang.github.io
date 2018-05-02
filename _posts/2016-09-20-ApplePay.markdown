@@ -1,0 +1,289 @@
+---
+layout: post
+title: ApplePay
+date: 2016-09-20
+---
+
+### 苹果支付(Apple Pay):
+Apple Pay，简单来说, 就是一种移动支付方式。通过Touch ID/ Passcode，用户可使用存储在设备上的信用卡和借记卡支付证书来授权支付； 它是苹果公司在2014苹果秋季新品发布会上发布的一种基于NFC的手机支付功能，于2014年10月20日在美国正式上线，2016年2月18日凌晨5：00， Apple Pay 业务在中国上线。同时使用者需要先将设备的操作系统升级到最新的iOS8版本。支持该功能的手机只有 iPhone 6和 iPhone6 Plus及以上型号;而对于**国内用户**来说iOS需**升级到9.2**及以上(因为iOS9.2才真正的支持“银联支付”， 意味着iOS9.2以后才可以在中国市场使用)，Watch OS需要2.1或更高版本。
+### Apple Pay 支持的设备:
+- iPhone系列：iPhone 6、iPhone6 Plus、iPhone 6s、iPhone 6s Plus、iPhone SE 、iPhone 7、iPhone7 Plus
+- iPad系列：iPad Air 2、iPad mini 3、iPad mini 4、iPad Pro
+Apple Watch
+- 注意：iPhone 5和iPhone 5s本身并不支持，而是连接到它们的Apple Watch可以用，因为5系列的手机不带NFC。
+
+![线上线下设备的支持](http://upload-images.jianshu.io/upload_images/1867963-585cc3c0e71ec93a.png?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240)
+
+### 支持的银行和商家:
+
+![大陆所支持的银行](http://upload-images.jianshu.io/upload_images/1867963-18f39eebdc222b67.png?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240)
+同时也可以查看此链接查看最新的[相关信息](https://support.apple.com/zh-cn/HT206638);
+
+
+![服务支持.png](http://upload-images.jianshu.io/upload_images/1867963-45d6570741e84bb2.png?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240)
+
+
+![商家支持1](http://upload-images.jianshu.io/upload_images/1867963-c59d4f8874e8e75a.png?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240)
+
+
+![商家支持2](http://upload-images.jianshu.io/upload_images/1867963-4ccc2ced3d272be9.png?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240)
+
+
+![商家支持3](http://upload-images.jianshu.io/upload_images/1867963-a8327e7775dc230e.png?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240)
+
+
+![可使用 Apple Pay 的 APP1](http://upload-images.jianshu.io/upload_images/1867963-f9336de87e61e6c5.png?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240)
+
+
+![可使用 Apple Pay 的 APP2](http://upload-images.jianshu.io/upload_images/1867963-e141b0ca468589b1.png?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240)
+
+同时也可以查看此链接查看最新的[相关信息](https://www.apple.com/cn/apple-pay/where-to-use-apple-pay/);
+
+### Apple Pay 和微信支付以及支付宝支付的区别:
+#### 1.网络环境
+Apple Pay：线上支付需要联网， 线下支付无需联网就可以支付;使用 基于NFC的近场通讯技术;
+微信、支付宝： 无论是线上还是线下支付， 都需要联网才能使用;
+#### 2.主要功能
+Apple Pay：线上支付、线下支付、部分升级后的ATM机可以取款,不可以转账和充值;
+微信、支付宝： 线上支付、线下支付、转账、理财等;
+#### 3.安全性
+Apple Pay：Apple 不会保存你的交易信息，并且不会暴漏给外界、不分流银行存款（不需要从银行卡转钱到另外一个平台）、不能充值  安全性较高;
+微信、支付宝： 密码保护，实名验证等手段保护账户;  安全性相对稍差;(需要将银行卡的钱转到另外一个平台)
+#### 4.用户体验
+Apple Pay：无论是线上支付，还是线下支付， 只需要验证指纹即可支付。非常方便快捷;
+微信、支付宝： 需要扫码支付， 流程相对繁琐，所以时长较长;
+#### 5.弊端
+Apple Pay：只适用于苹果设备，支付场景单一，无转账理财等业务,合作商家银行相对来说比较少;
+微信、支付宝： 安全性较差， 必须联网操作，需要充值到对应平台,操作繁琐;
+
+### 集成流程:
+除了使用 PassKit 框架实施 Apple Pay 之外，您还必须：
+
+- 通过付款处理机构或网关设置一个帐户。
+- 通过“证书、标识符和描述文件”（“Certificates, Identifiers & Profiles”）注册一个商家 ID。
+- 生成一个 Apple Pay 证书，用于加密和解密付款令牌。
+- 在您的 App 中包括一个 Apple Pay 授权。
+
+##### 1.配置支付环境
+- 设置项目的BundleID;此BundleID必须和开发者中心的相一致;同时设置项目的最低部署版本为iOS8.0;同时开启Apple Pay 功能;
+
+- 注册并配置商业表示符
+1.添加一个 App ID,并勾选对应的 Apple Pay选项;
+2.配置Merchant ID(商户 ID);
+3.为Merchant ID 配置证书, 并下载证书安装到钥匙串;
+4.检查安装到钥匙串中的证书是否有效;
+5.绑定Merchant ID 到 APP ID;
+
+附上开发者中心的环境配置流程:
+
+>Configuring Your Environment
+A merchant ID identifies you to Apple Pay as being able to accept payments. The public key and certificate associated with your merchant ID is used as part of the payment process to encrypt payment information. Before your app can use Apple Pay, you need to register a merchant ID and configure its certificate.
+
+- To register a merchant ID
+
+>- In Member Center, select Certificates, Identifiers & Profiles.
+- Under Identifiers, select Merchant IDs.
+- Click the Add button (+) in the upper-right corner.
+- Enter a description and identifier, and click Continue.
+- Review the settings, and click Register.
+- Click Done.
+
+- To configure a certificate for your merchant ID
+
+>- In Member Center, select Certificates, Identifiers & Profiles.
+- Under Identifiers, select Merchant IDs.
+- Select the merchant ID from the list, and click Edit.
+- Click Create Certificate, follow the instructions to obtain or generate your certificate signing request (CSR), and click Continue.
+- Click Choose File, select your CSR, and click Generate.
+- Download the certificate by clicking Download, and click Done.
+
+注意事项:
+>If you see a warning in Keychain Access that the certificate was signed by an unknown authority or that it has an invalid issuer, make sure you have the WWDR intermediate certificate - G2 and the Apple Root CA - G2 installed in your keychain. You can download them from 
+https://www.apple.com/certificateauthority/.
+To enable Apple Pay for your app in Xcode, open the Capabilities pane. Select the switch in the Apple Pay row, and then select the merchant IDs you want the app to use.
+
+![配置成功之后](http://upload-images.jianshu.io/upload_images/1867963-345683fc4b9243be.png?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240)
+##### 2.具体实现
+（1）判断当前设备是否支付Apple Pay, 同时判断"Wallet有没有添加该支付网络的储蓄卡/信用卡";
+```
+if(![PKPaymentAuthorizationViewController canMakePayments])
+{
+    NSLog(@"当前设备不支付Apple Pay");
+    self.payView.hidden = YES;
+
+    //判断是否添加银行卡(银联卡在 iOS9.2之后才支持)
+}else  if (![PKPaymentAuthorizationViewController canMakePaymentsUsingNetworks:@[PKPaymentNetworkAmex, PKPaymentNetworkMasterCard, PKPaymentNetworkVisa, PKPaymentNetworkChinaUnionPay]]) {
+    NSLog(@"Wallet没有添加该支付网络的储蓄卡/信用卡");
+
+    // 创建一个设置按钮;当用户点击的时候跳转到添加银行卡的界面;
+    PKPaymentButton *button = [PKPaymentButton buttonWithType:PKPaymentButtonTypeSetUp style:PKPaymentButtonStyleWhiteOutline];
+    [button addTarget:self action:@selector(jump) forControlEvents:UIControlEventTouchUpInside];
+    [self.payView addSubview:button];
+}else{
+    // 创建一个购买按钮;当用户点击的时候购买商品;
+    PKPaymentButton *button = [PKPaymentButton buttonWithType:PKPaymentButtonTypeSetUp style:PKPaymentButtonStyleBlack];
+    [button addTarget:self action:@selector( buy) forControlEvents:UIControlEventTouchUpInside];
+    [self.payView addSubview:button];
+}
+```
+(2)两个按钮的跳转方法
+```
+#pragma mark - 私有方法
+// 跳转到添加银行卡界面
+- (void)jump
+{
+    PKPassLibrary *passLibrary = [[PKPassLibrary alloc] init];
+    [passLibrary openPaymentSetup];
+}
+
+// 购买
+-(void)buy
+{
+    NSLog(@"购买商品, 开始支付,设置所要购买商品的信息");
+    // 1. 创建一个支付请求
+    PKPaymentRequest *request = [[PKPaymentRequest alloc] init];
+
+    // 1.1 配置支付请求
+    // 1.1.1 配置商家ID
+    request.merchantIdentifier = @"自己申请的商户 ID";
+
+    // 1.1.2 配置货币代码, 以及国家代码
+    request.countryCode = @"CN";
+    request.currencyCode = @"CNY";
+
+    // 1.1.3 配置请求支持的支付网络
+    request.supportedNetworks = @[PKPaymentNetworkAmex, PKPaymentNetworkMasterCard, PKPaymentNetworkVisa, PKPaymentNetworkChinaUnionPay];
+
+    // 1.1.4 配置商户的处理方式.通过指定merchantCapabilities属性来指定你支持的支付处理标准，3DS支付方式是必须支持的，EMV方式是可选的
+    request.merchantCapabilities = PKMerchantCapability3DS | PKMerchantCapabilityEMV | PKMerchantCapabilityCredit | PKMerchantCapabilityDebit;
+
+    // 1.1.5 配置购买的商品列表
+    NSDecimalNumber *price1 = [NSDecimalNumber decimalNumberWithMantissa:10 exponent:-2 isNegative:YES];
+    PKPaymentSummaryItem *item1 = [PKPaymentSummaryItem summaryItemWithLabel:@"苹果6" amount:price1];
+
+    NSDecimalNumber *price2 = [NSDecimalNumber decimalNumberWithString:@"10.0"];
+    PKPaymentSummaryItem *item2 = [PKPaymentSummaryItem summaryItemWithLabel:@"苹果6s" amount:price2];
+
+    NSDecimalNumber *price3 = [NSDecimalNumber decimalNumberWithString:@"20.0"];
+    PKPaymentSummaryItem *item3 = [PKPaymentSummaryItem summaryItemWithLabel:@"MAC" amount:price3];
+
+    NSDecimalNumber *totalAmount = [NSDecimalNumber zero];
+    totalAmount = [totalAmount decimalNumberByAdding:price1];
+    totalAmount = [totalAmount decimalNumberByAdding:price2];
+    totalAmount = [totalAmount decimalNumberByAdding:price3];
+
+    PKPaymentSummaryItem *total = [PKPaymentSummaryItem summaryItemWithLabel:@"My Company Name" amount:totalAmount];
+
+    // 注意: 支付列表最后一个, 代表汇总
+    request.paymentSummaryItems = @[item1, item2, item3, total];
+
+    // 1.2 配置请求的附加项
+    // 1.2.1 是否显示发票收货地址, 显示哪些选项
+    request.requiredBillingAddressFields = PKAddressFieldAll;
+
+    // 1.2.2 是否显示快递地址, 显示哪些选项
+    request.requiredShippingAddressFields = PKAddressFieldAll;
+
+    // 1.2.3 配置快递方式NSArray<PKShippingMethod *>
+    NSDecimalNumber *priceFast1 = [NSDecimalNumber decimalNumberWithString:@"18.0"];
+    PKShippingMethod *method = [PKShippingMethod summaryItemWithLabel:@"顺丰快递" amount:priceFast1];
+    method.detail = @"24小时内送到";
+    method.identifier = @"顺丰";
+
+    NSDecimalNumber *priceFast2 = [NSDecimalNumber decimalNumberWithString:@"0.1"];
+    PKShippingMethod *method2 = [PKShippingMethod summaryItemWithLabel:@"韵达快递" amount:priceFast2];
+    method2.identifier = @"韵达";
+    method2.detail = @"送货上门";
+    request.shippingMethods = @[method, method2];
+
+    // 1.2.4 配置快递的类型
+    request.shippingType = PKShippingTypeStorePickup;
+
+    // 1.3 添加一些附加数据; 使用applicationData属性来存储一些在你的应用中关于这次支付请求的唯一标识信息，比如一个购物车的标识符。在用户授权支付之后，这个属性的哈希值会出现在这次支付的token中。
+    request.applicationData = [@"buyID=12345" dataUsingEncoding:NSUTF8StringEncoding];
+
+    // 1.4 添加取货的联系人和地址信息
+    PKContact *contact = [[PKContact alloc] init];
+
+    NSPersonNameComponents *name = [[NSPersonNameComponents alloc] init];
+    name.givenName = @"John";
+    name.familyName = @"Appleseed";
+
+    contact.name = name;
+
+    CNMutablePostalAddress *address = [[CNMutablePostalAddress alloc] init];
+    address.street = @"1234 Laurel Street";
+    address.city = @"Atlanta";
+    address.state = @"GA";
+    address.postalCode = @"30303";
+
+    contact.postalAddress = address;
+
+    request.shippingContact = contact;
+
+    // 2. 验证用户的支付授权
+    PKPaymentAuthorizationViewController * paymentPane = [[PKPaymentAuthorizationViewController alloc] initWithPaymentRequest:request];
+    paymentPane.delegate = self;
+    [self presentViewController: paymentPane animated:YES completion:nil];
+}
+```
+（3）处理支付凭证(token)
+```
+#pragma mark - PKPaymentAuthorizationViewControllerDelegate
+// 如果当用户授权成功, 就会调用这个方法
+// 参数一: 授权控制器
+// 参数二 : 支付对象
+// 参数三: 系统给定的一个回调代码块, 我们需要执行这个代码块, 来告诉系统当前的支付状态是否成功.
+- (void)paymentAuthorizationViewController:(PKPaymentAuthorizationViewController *)controller
+didAuthorizePayment:(PKPayment *)payment
+completion:(void (^)(PKPaymentAuthorizationStatus status))completion
+{
+    // 一般在此处,拿到支付信息, 发送给服务器处理, 处理完毕之后, 服务器会返回一个状态, 告诉客户端,是否支付成功, 然后由客户端进行处理
+    BOOL isSucess = YES;
+
+    if (isSucess) {
+        completion(PKPaymentAuthorizationStatusSuccess);
+    }else{
+        completion(PKPaymentAuthorizationStatusFailure);
+    }
+}
+```
+
+（4）关闭授权控制器
+```
+// 当用户授权成功, 或者取消授权时调用
+- (void)paymentAuthorizationViewControllerDidFinish:(PKPaymentAuthorizationViewController *)controller
+{
+    NSLog(@"授权取消或者交易完成");
+    [self dismissViewControllerAnimated:controller completion:nil];
+}
+```
+
+### 付款流程
+首先，App 会检查其是否支持 Apple Pay 作为付款方式。在本例中，App 需要与所选送货地址相应的邮政编码，以计算送货成本并更新应付的总金额。在用户完成付款授权后，您的 App 会通过 PassKit 从 Secure Element 收到一个付款令牌。
+
+![](http://upload-images.jianshu.io/upload_images/1867963-e1ebaef87beb5827.png?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240)
+
+###Apple Pay 支付授权的流程图:
+
+![流程图](http://upload-images.jianshu.io/upload_images/1867963-11f4a6a526eb5d7e.png?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240)
+
+1.框架发送支付请求给安全模块，只有安全模块可以访问存储在设备上的标记化的卡信息。 
+
+2.安全模块把特定的卡和商家等支付数据加密，以保证只有苹果可以读取，然后发送给框架。框架会将这些数据发送给苹果。 
+
+3.苹果服务器再次加密这些支付数据，以保证只有商家可以读取。然后服务器对它进行签名，生成支付token，然后发送给设备。 
+
+4.框架调用相应的代理方法并传入这个token，然后你的代理方法传送token给你的服务器。
+
+用于处理付款的信息有一个嵌套的数据结构,如图所示。支付令牌PKPaymentToken类的一个实例。其paymentData属性的值是一个JSON字典,有头信息用于验证、支付和加密数据。加密的数据包括持卡人的名字和数量等信息和其他信息用于特定的支付处理协议。
+
+![PKPaymentToken实例](http://upload-images.jianshu.io/upload_images/1867963-a4fb430e8827f9c6.png?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240)
+
+### 总结:
+处理付款的步骤:
+1.发送付款信息到你的服务器,连同其他需要处理订单的信息;
+2.验证支付数据的哈希表和签名;
+3.为加密过的付款数据进行解密;
+4.提交付款数据到支付处理系统;
+5.向订单跟踪系统提交订单;

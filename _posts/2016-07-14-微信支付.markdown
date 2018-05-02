@@ -1,0 +1,97 @@
+---
+layout: post
+title: 微信支付
+date: 2016-07-14
+---
+
+### 前言
+网上关于微信支付的文章很多，但是感觉写的很多而且很乱，而且都是讲客户端和服务端全都写出来，搞得看的人根本搞不懂在客户端应该写写什么，在服务端应该写些什么；让人头很大！在这里主要区分客户端和服务端应该进行的操作流程！其实现流程也是按照微信支付的开发文档来实现的；有的人可能会说微信支付的文档很乱搞不清该写些什么，说实话对于第一次集成的人来说确实比较乱，一着急就更加迷茫了！所以在此特梳理一下微信支付的实现流程和集成的时候所遇到的坑！
+
+### 流程
+步骤1：用户在商户APP中选择商品，提交订单，选择微信支付。
+步骤2：商户后台收到用户支付单，调用微信支付统一下单接口。参见【[统一下单API](https://pay.weixin.qq.com/wiki/doc/api/app/app.php?chapter=9_1)】。
+步骤3：`统一下单接口返回正常的prepay_id，再按签名规范重新生成签名后，将数据传输给APP。`参与签名的字段名为appid，partnerid，prepayid，noncestr，timestamp，package。注意：package的值格式为Sign=WXPay
+步骤4：商户APP调起微信支付。api参见本章节【[app端开发步骤说明](https://pay.weixin.qq.com/wiki/doc/api/app/app.php?chapter=8_5)】
+步骤5：商户后台接收支付通知。api参见【[支付结果通知API](https://pay.weixin.qq.com/wiki/doc/api/app/app.php?chapter=9_7)】
+步骤6：商户后台查询支付结果。api参见【[查询订单API](https://pay.weixin.qq.com/wiki/doc/api/app/app.php?chapter=9_2)】
+
+
+### 1.客户端
+根据微信的开发文档显示所有关于订单的签名加密的操作最好放到服务端去实现；下面是微信支付客户端所需要实现的方法：
+
+1、项目设置APPID
+商户在微信开放平台申请开发APP应用后，微信开放平台会生成APP的唯一标识APPID。在Xcode中打开项目，设置项目属性中的URL Schemes为您的APPID；
+2、注册APPID
+商户APP工程中引入微信lib库和头文件，调用API前，需要先向微信注册您的APPID，代码如下：
+```[WXApi registerApp：@"wxd930ea5d5a258f4f"];```
+3、调起支付
+商户服务器生成支付订单，先调用【[统一下单API](https://pay.weixin.qq.com/wiki/doc/api/app/app.php?chapter=9_1)】生成预付单，获取到prepay_id后将参数再次签名传输给APP发起支付。以下是调起微信支付的关键代码（注意微信支付的单位是分）：
+```
+//下面所有的参数都是服务端返回的（注意事项：就是时间戳在iOS中是10位的，超过10位会越界；）
+PayReq *request = [[PayReq alloc] init];
+request.partnerId = @"10000100";
+request.prepayId = @"1101000000140415649af9fc314aa427";
+request.package = @"Sign=WXPay";
+request.nonceStr = @"a462b76e7436e98e0ed6e13c64b4fd1c";
+request.timeStamp = @"1397527777";
+request.sign = @"582282D72DD2B03AD892830965F428CB16E7A256";
+[WXApi sendReq：request];
+```
+4、支付结果回调
+照微信SDK Sample，在类实现onResp函数，支付完成后，微信APP会返回到商户APP并回调onResp方法，开发者需要在该方法中接收通知，判断返回错误码，如果支付成功则去后台查询支付结果再展示用户实际支付结果。注意    一定不能以客户端返回作为用户支付的结果，应以服务器端的接收的支付通知或查询API返回的结果为准。再者就是此方法一般写到APPdelegate中或者将其封装为一个工具类！添加监听的方法为：
+```
+[WXApi handleOpenURL:url delegate:self];
+```
+监听支付结果：
+```
+//微信SDK自带的方法，处理从微信客户端完成操作后返回程序之后的回调方法,显示支付结果的
+- (void)onResp:(BaseResp *)resp{
+    //启动微信支付的response
+    NSString *payResoult = [NSString stringWithFormat:@"errcode:%d",resp.errCode];
+    if([resp isKindOfClass:[PayResp class]]){
+        //支付返回结果，实际支付结果需要去微信服务器端查询
+        switch (resp.errCode) {
+        case 0:
+            payResoult = @"支付结果：成功！";
+            NSLog(@"支付成功！");
+        break;
+        case -1:
+            payResoult = @"支付结果：失败！";
+            NSLog(@"支付失败！");
+        break;
+        case -2:
+            payResoult = @"用户已经退出支付！";
+            NSLog(@"用户退出！");
+        break;
+        default:
+            payResoult = [NSString stringWithFormat:@"支付结果：失败！retcode = %d, retstr = %@", resp.errCode,resp.errStr];
+        break;
+        }
+    }
+}
+```
+
+### 2.服务端
+对于集成微信支付来说任务基本上都是在服务端来完成；主要是为了安全起见，防止被别人篡改信息；
+#### 第一步：统一下单
+客户端将生成订单所需要的信息传给服务端，服务端接收到的参数格式化为XML格式的数据，完成之后将微信返回的数据进行解析，取出客户端需要的数据，用户唤起微信进行支付（所需参数包括：`appid，partnerid，prepayid，noncestr，timestamp，package。注意：package的值格式为Sign=WXPay`）;
+
+总结：
+```
+1.请求参数需要按照参数的key进行字母的ASCII码进行排序;
+2.对排序后的数据进行MD5签名，微信服务端会进行校验，防止数据在网络传输过程中被篡改。
+3.拿到微信响应的数据，首先要做的事，也是对获取的数据进行签名校验，理由同上。
+4.需要注意的一点，返回给app客户端的数据的key一定是小写，这点微信的api是没有说明白的，之前和客户端联调时耽误了很多时间，这也是微信支付被很多开发者吐槽的地方api比较难用^-^
+```
+
+#### 第二步：调起支付
+一般是通过客户端来调起微信进行支付的；
+通过上一步服务器返回的支付参数通过调用SDK调起微信支付；向微信支付系统发起支付请求，微信支付系统验证支付参数，APP支付权限等，返回需要支付的授权，用户确认支付，输入支付密码；提交支付授权，微信支付系统验证授权完成支付；
+
+#### 第三步：查询订单
+客户端在接收到微信支付系统的支付结果回调之后并不代表最终的支付结果成功，还需要向后台查询实际的支付结果，服务端需要调用微信的查询API查询支付结果，服务端返回支付结果记录！客户端通过后台查询的支付结果才是最终的支付结果；
+
+### 3.总结
+整个微信支付的整个流程就是这样，中间写的多有不足，还望大家批评指点！如有什么问题欢迎大家下方留言！O(∩_∩)O谢谢....
+
+备注:最近项目针对微信支付有个特殊的需求,就是在进行微信的支付的时候想对针对不同的商家使用不同的APPID, 经过一番查找之后发现目前iOS中并不支持这种多账户支付,因为在集成微信支付的时候需要设置App scheme;但是这个字段又不能在程序运行中动态设置App scheme,因此就没更好的方法来实现这一功能;但是支付宝针对这中需求还是支持的比较好的!不知道大家有遇到这种需求没有,或者有什么好的解决办法没有?欢迎在下方留言讨论,或者私信我!O(∩_∩)O谢谢!

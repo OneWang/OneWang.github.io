@@ -1,0 +1,281 @@
+---
+layout: post
+title: IM即时通讯
+date: 2016-08-18
+---
+
+### 一:效果图
+支持语音,图片以及emoji 和文字.在这就是未读消息显示以及自动登录.再者就是从数据库中消息的读取.最后就是一个添加好友以及好友的一个展示列表;先来几张效果图吧:
+
+
+![通讯录](http://upload-images.jianshu.io/upload_images/1867963-6121fdd93f53e779.png?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240)
+![会话](http://upload-images.jianshu.io/upload_images/1867963-048eb7b84f52e733.png?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240)
+![朋友圈](http://upload-images.jianshu.io/upload_images/1867963-a9c4bac6c0fc2835.png?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240)
+
+附上 github 地址:https://github.com/OneWang/IM-WeiChat
+如果能够帮到您就 star 关注一下了,不胜感激(⊙o⊙)哦!;
+
+### 二:集成
+具体的集成流程环信官网上的开发文档我想步骤已经写得很详细了,如果还有不明白的可以私信我,具体可以查看官方文档;地址:http://docs.easemob.com
+
+再者就是 appkey 的申请了;到环信的开发者中心去注册一下 账户,这是免费的哦!然后创建自己的应用获取相应的应用标识(AppKey);在后面开发的时候会用到的,没有的话是没法进行开发的;
+
+### 三:开发流程
+EMClient: 是 SDK 的入口，主要完成登录、退出、连接管理等功能。也是获取其他模块的入口。
+EMChatManager: 管理消息的收发，完成会话管理等功能。
+EMContactManager: 负责好友的添加删除，黑名单的管理。
+EMGroupManager: 负责群组的管理，创建、删除群组，管理群组成员等功能。
+EMChatroomManager: 负责聊天室的管理
+#### 1.初始化 SDK:
+第 1 步：引入相关头文件 #import “EMSDK.h”。
+第 2 步：在工程的 AppDelegate 中的以下方法中，调用 SDK 对应方法。
+```
+//registerSDKWithAppKey:注册的appKey，开发者注册及管理后台。
+//apnsCertName:推送证书名(不需要加后缀)，制作与上传推送证书。
+//    [[EaseMob sharedInstance] registerSDKWithAppKey:@"437512311#chat-wang" apnsCertName:nil];
+
+//1.初始化SDK,并隐藏环信SDK的日志输出
+[[EaseMob sharedInstance] registerSDKWithAppKey:@"437512311#chat-wang" apnsCertName:nil otherConfig:@{kSDKConfigEnableConsoleLogger : @(NO)}];
+[[EaseMob sharedInstance] application:application didFinishLaunchingWithOptions:launchOptions];
+
+//app进入后台
+- (void)applicationDidEnterBackground:(UIApplication *)application {
+    [[EaseMob sharedInstance] applicationDidEnterBackground:application];
+}
+
+//app将要从后台返回
+- (void)applicationWillEnterForeground:(UIApplication *)application {
+    [[EaseMob sharedInstance] applicationWillEnterForeground:application];
+}
+- (void)dealloc
+{
+    [[EaseMob sharedInstance].chatManager removeDelegate:self];
+}
+```
+#### 2.注册:
+注册模式分两种，开放注册和授权注册。
+- 只有开放注册时，才可以客户端注册。开放注册是为了测试使用，正式环境中不推荐使用该方式注册环信账号。
+- 授权注册的流程应该是您服务器通过环信提供的 REST API 注册，之后保存到您的服务器或返回给客户端。
+
+```
+//注册
+[[EaseMob sharedInstance].chatManager asyncRegisterNewAccount:username password:password withCompletion:^(NSString *username, NSString *password, EMError *error) {
+if (!error) {
+    [MBProgressHUD showSuccess:@"注册成功"];
+}else{
+    [MBProgressHUD showError:@"注册失败"];
+    NSLog(@"注册失败:%@",error);
+}
+} onQueue:dispatch_get_main_queue()];
+```
+#### 3.登录以及自动登录
+- 自动登录：即首次登录成功后，不需要再次调用登录方法，在下次 APP 启动时，SDK 会自动为您登录。并且如果您自动登录失败，也可以读取到之前的会话信息。
+- SDK 中自动登录属性默认是关闭的，需要您在登录成功后设置，以便您在下次 APP 启动时不需要再次调用环信登录，并且能在没有网的情况下得到会话列表。
+
+```
+//让环信的SDK在第一次登录之后,自动从服务器获取好友列表,添加到本地数据库中(Buddy表)
+[[EaseMob sharedInstance].chatManager setIsAutoFetchBuddyList:YES];
+
+NSString * username = self.userNameField.text;
+NSString * password = self.passWordField.text;
+
+if (username.length == 0 || password.length == 0) {
+    [MBProgressHUD showError:@"账号或密码不能为空"];
+    return;
+}
+//登录
+[[EaseMob sharedInstance].chatManager asyncLoginWithUsername:username password:password completion:^(NSDictionary *loginInfo, EMError *error) {
+//登录请求之后的block的回调
+if (!error) {
+
+    /* 登录信息格式
+    LastLoginTime = 1462246275413;
+    jid = "437512311#chat-wang_wang@easemob.com";
+    password = 123456;
+    resource = mobile;
+    token = "YWMtOqAglhDfEeaq3zM2X-U7XgAAAVWpp1G2iB3Bmbp4pSTCxFiBv2EgsfS4xUc";
+    username = wang;
+    */
+
+    [MBProgressHUD showSuccess:@"登录成功"];
+    NSLog(@"用户信息:%@",loginInfo);
+
+    //设置自动登录
+    [[EaseMob sharedInstance].chatManager setIsAutoLoginEnabled:YES];
+
+    //来主界面
+    self.view.window.rootViewController = [UIStoryboard storyboardWithName:@"Main" bundle:nil].instantiateInitialViewController;
+}else{
+    [MBProgressHUD showError:@"登录失败"];
+    NSLog(@"登录错误信息:%@",error);
+    //User do not exist
+    /** 每一个应用都有自己的注册用户 */
+    }
+} onQueue:dispatch_get_main_queue()];
+```
+自动登录在以下几种情况下会被取消：
+- 用户调用了 SDK 的登出动作；
+- 用户在别的设备上更改了密码，导致此设备上自动登录失败；
+- 用户的账号被从服务器端删除；
+- 用户从另一个设备登录，把当前设备上登录的用户踢出。
+
+所以，在您调用登录方法前，应该先判断是否设置了自动登录，如果设置了，则不需要您再调用。通过代理监听自动登录状态:
+```
+//2.监听自动登录的状态
+//设置chatManager代理
+[[EaseMob sharedInstance].chatManager addDelegate:self delegateQueue:dispatch_get_main_queue()];
+
+//3.如果登录过,直接来到主界面
+if ([[EaseMob sharedInstance].chatManager isAutoLoginEnabled]) {
+    self.window.rootViewController = [UIStoryboard storyboardWithName:@"Main" bundle:nil].instantiateInitialViewController;
+}
+```
+SDK 中，如果发生自动登录，会有以下回调：
+```
+#pragma mark 自动登录的回调
+- (void)didAutoLoginWithInfo:(NSDictionary *)loginInfo error:(EMError *)error
+{
+    if (!error) {
+        [MBProgressHUD showSuccess:@"自动登录成功"];
+        NSLog(@"自动登录成功 %@",loginInfo);
+    }else{
+        [MBProgressHUD showError:@"自动登录失败"];
+        NSLog(@"自动登录失败 %@",error);
+    }
+}
+```
+#### 4.退出登录
+退出登录分两种类型：主动退出登录和被动退出登录。
+
+- 主动退出登录：调用 SDK 的退出接口；
+- 被动退出登录：1. 正在登录的账号在另一台设备上登录；2. 正在登录的账号被从服务器端删除。
+logout:YES：是否解除 device token 的绑定，在被动退出时 SDK 内部处理，不需要调用退出方法。
+
+```
+//isUnbind 是否推送
+[[EaseMob sharedInstance].chatManager asyncLogoffWithUnbindDeviceToken:YES completion:^(NSDictionary *info, EMError *error) {
+    if (error) {
+        NSLog(@"退出失败 %@",error);
+        }else{
+        NSLog(@"退出成功");
+        //回到登录界面
+        self.view.window.rootViewController = [UIStoryboard storyboardWithName:@"Login" bundle:nil].instantiateInitialViewController;
+    }
+} onQueue:nil];
+```
+使用回调方法监听被动退出登录。
+
+```
+/*!
+@method
+@brief 用户注销后的回调
+@discussion
+@param error        错误信息
+@result
+*/
+- (void)didLogoffWithError:(EMError *)error;
+
+/*!
+@method
+@brief 当前登录账号在其它设备登录时的通知回调
+@discussion
+@result
+*/
+- (void)didLoginFromOtherDevice;
+
+/*!
+@method
+@brief 当前登录账号已经被从服务器端删除
+@discussion
+@result
+*/
+- (void)didRemovedFromServer;
+```
+#### 五:构建消息并发送消息对象
+```
+- (void)sendMesssage:(id<IEMMessageBody>)body{
+
+    //2.构造消息对象
+    EMMessage *msgObj = [[EMMessage alloc] initWithReceiver:self.buddy.username bodies:@[body]];
+    //消息类型为单聊模式
+    msgObj.messageType = eMessageTypeChat;
+
+    //3.发送消息
+    [[EaseMob sharedInstance].chatManager asyncSendMessage:msgObj progress:nil prepare:^(EMMessage *message, EMError *error) {
+        NSLog(@"准备发送");
+    } onQueue:nil completion:^(EMMessage *message, EMError *error) {
+        NSLog(@"发送成功");
+    } onQueue:nil];
+
+    //把消息添加到数据源数组,然后刷新表格
+    [self addDataArrayWithMessage:msgObj];
+    [self.tableView reloadData];
+
+    //把消息滚动显示在最上面
+    [self scrollToBottom];
+}
+```
+
+初始化一个会话对象
+```
+EMConversation *conversation = [[EaseMob sharedInstance].chatManager conversationForChatter:self.buddy.username conversationType:eConversationTypeChat];
+```
+
+#### 六:获取好友列表
+```
+//从服务器获取好友列表
+[[EaseMob sharedInstance].chatManager asyncFetchBuddyListWithCompletion:^(NSArray *buddyList, EMError *error) {
+//赋值给数据源
+self.buddyList = buddyList;
+//刷新
+[self.tableView reloadData];
+} onQueue:nil];
+// 获取好友列表的数据
+/* 注意
+1.好友列表buddyList需要在自动登录之后才有值
+2.buddyList数据是从本地数据库获取的
+3.要想从服务器获取好友数据调用这个方法- (void *)asyncFetchBuddyListWithCompletion:(void (^)(NSArray *buddyList, EMError *error))completion
+onQueue:(dispatch_queue_t)queue;
+4.如果当前有添加好友请求,环信的SDK内部会往数据库的buddy表添加好友记录
+5.如果程序删除或者用户第一次登录,buddyList表是没有记录的;
+解决方案:
+1.要从服务器获取好友列表记录
+2.用户第一次登录后,自动从服务器获取还有列表
+*/
+
+//删除好友
+[[EaseMob sharedInstance].chatManager removeBuddy:username removeFromRemote:YES error:nil];
+
+//添加代理后好友列表更新监听
+#pragma mark 好友数据列表被更新
+- (void)didUpdateBuddyList:(NSArray *)buddyList changedBuddies:(NSArray *)changedBuddies isAdd:(BOOL)isAdd
+```
+#### 七:获取历史会话记录
+```
+//获取历史会话记录
+//1.从内存中获取历史会话记录
+NSArray *conversations = [[EaseMob sharedInstance].chatManager conversations];
+
+//2.如果内存中没有会话记录,从数据库中获取conversations
+if (conversations.count == 0) {
+    conversations = [[EaseMob sharedInstance].chatManager loadAllConversationsFromDatabaseWithAppend2Chat:YES];
+}
+self.conversations = conversations;
+```
+显示未读消息数目:
+```
+//遍历所有的会话记录,将未读消息数进行类加
+NSInteger totalUnreadCount = 0;
+for (EMConversation *conversation in self.conversations) {
+    totalUnreadCount += conversation.unreadMessagesCount;
+}
+if (totalUnreadCount > 0) {
+    self.navigationController.tabBarItem.badgeValue = [NSString stringWithFormat:@"%ld",totalUnreadCount];
+}else{
+    self.navigationController.tabBarItem.badgeValue = nil;
+}
+```
+>总结:[EaseMob sharedInstance].chatManager ; //这是会话管理者,获取该对象后, 可以做登录、聊天、加好友等操作;
+[EaseMob sharedInstance].callManager ;//这是即时通讯(语音聊天和视频聊天)的管理者.
+在开发过程中主要是这两个个对象在掌控所有会话消息等;
+>注意:项目会不定期的更新哦!后面会加入一些小的功能和实现;还望多多关注哦!

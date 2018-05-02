@@ -1,0 +1,455 @@
+---
+layout: post
+title: RunTime
+date: 2016-06-08
+---
+
+### 一、runtime简介
+*    RunTime简称运行时。OC就是`运行时机制`，也就是在运行时候的一些机制，其中最主要的是消息机制。
+*    对于C语言，`函数的调用在编译的时候会决定调用哪个函数`。
+*    对于OC的函数，属于`动态调用过程`，在编译的时候并不能决定真正调用哪个函数，只有在真正运行的时候才会根据函数的名称找到对应的函数来调用。
+*    事实证明：
+*    在编译阶段，OC可以`调用任何函数`，即使这个函数并未实现，只要声明过就不会报错。
+*    在编译阶段，C语言调用`未实现的函数`就会报错。
+
+### 二、runtime作用
+
+#### 1.发送消息
+*    方法调用的本质，就是让对象发送消息。
+*    objc_msgSend,只有对象才能发送消息，因此以objc开头.
+*    使用`消息机制`前提，必须导入#import <objc/message.h>
+- 注意如果在使用 runtime 的时候方法不可以调用的时候,检查设置是否是 NO:
+![设置.png](http://upload-images.jianshu.io/upload_images/1867963-8c8b3e0686b7920a.png?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240)
+*    消息机制简单使用
+
+消息机制：当向一个对象发送消息时，objc_msgSend方法根据对象的isa指针找到对象的类，然后在类的调度表（dispatch table）中查找selector。如果无法找到selector，objc_msgSend通过指向父类的指针找到父类，并在父类的调度表（dispatch table）中查找selector，以此类推直到NSObject类。一旦查找到selector，objc_msgSend方法根据调度表的内存地址调用该方法；
+![消息发送步骤.png](https://upload-images.jianshu.io/upload_images/1867963-f4ef2c711523a16b.png?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240)
+
+
+```
+// 创建person对象
+Person *p = [[Person alloc] init];
+
+// 调用对象方法
+[p eat];
+
+// 本质：让对象发送消息
+objc_msgSend(p, @selector(eat));
+
+// 调用类方法的方式：两种
+// 第一种通过类名调用
+[Person eat];
+// 第二种通过类对象调用
+[[Person class] eat];
+
+// 用类名调用类方法，底层会自动把类名转换成类对象调用
+// 本质：让类对象发送消息
+objc_msgSend([Person class], @selector(eat));
+
+```
+* 消息机制原理:对象根据方法编号SEL去映射表查找对应的方法实现
+
+![SEL 映射.png](http://upload-images.jianshu.io/upload_images/1867963-01e9f6ac539d3fa5.png?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240)
+
+#### 2.交换方法
+*    开发使用场景:系统自带的方法功能不够，给系统自带的方法扩展一些功能，并且保持原有的功能。
+*    方式一:继承系统的类，重写方法.
+*    方式二:使用runtime,交换方法.
+
+```
+@implementation ViewController
+- (void)viewDidLoad {
+    [super viewDidLoad];
+    // Do any additional setup after loading the view, typically from a nib.
+    // 需求：给imageNamed方法提供功能，每次加载图片就判断下图片是否加载成功。
+    // 步骤一：先搞个分类，定义一个能加载图片并且能打印的方法+ (instancetype)imageWithName:(NSString *)name;
+    // 步骤二：交换imageNamed和imageWithName的实现，就能调用imageWithName，间接调用imageWithName的实现。
+    UIImage *image = [UIImage imageNamed:@"123"];
+}
+@end
+
+
+@implementation UIImage (Image)
+// 加载分类到内存的时候调用
++ (void)load
+{
+    // 交换方法
+    // 获取imageWithName方法地址
+    Method imageWithName = class_getClassMethod(self, @selector(imageWithName:));
+
+    // 获取imageWithName方法地址
+    Method imageName = class_getClassMethod(self, @selector(imageNamed:));
+
+    // 交换方法地址，相当于交换实现方式
+    method_exchangeImplementations(imageWithName, imageName);
+}
+
+// 不能在分类中重写系统方法imageNamed，因为会把系统的功能给覆盖掉，而且分类中不能调用super.
+
+// 既能加载图片又能打印
++ (instancetype)imageWithName:(NSString *)name
+{
+    // 这里调用imageWithName，相当于调用imageName
+    UIImage *image = [self imageWithName:name];
+    if (image == nil) {
+    NSLog(@"加载空的图片");
+    }
+    return image;
+}
+@end
+```
+* 交换之前：
+
+![方法映射.png](http://upload-images.jianshu.io/upload_images/1867963-5c163834fef31ce8.png?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240)
+* 交换之后：
+
+![方法映射.png](http://upload-images.jianshu.io/upload_images/1867963-ead634bfa7bef2e9.png?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240)
+
+
+
+#### 3.动态添加方法
+* 开发使用场景：如果一个类方法非常多，加载类到内存的时候也比较耗费资源，需要给每个方法生成映射表，可以使用动态给某个类，添加方法解决。
+* 经典面试题：有没有使用performSelector，其实主要想问你有没有动态添加过方法。
+* 简单使用
+
+```
+@implementation ViewController
+- (void)viewDidLoad {
+    [super viewDidLoad];
+    Person *p = [[Person alloc] init];
+
+    // 默认person，没有实现eat方法，可以通过performSelector调用，但是会报错。
+    // 动态添加方法就不会报错
+    [p performSelector:@selector(eat)];
+}
+@end
+
+
+@implementation Person
+// void(*)()
+// 默认方法都有两个隐式参数，
+void eat(id self,SEL sel){
+    NSLog(@"%@ %@",self,NSStringFromSelector(sel));
+}
+
+// 当一个对象调用未实现的方法，会调用这个方法处理,并且会把对应的方法列表传过来.
+// 刚好可以用来判断，未实现的方法是不是我们想要动态添加的方法
++ (BOOL)resolveInstanceMethod:(SEL)sel{
+    if (sel == @selector(eat)) {
+        // 动态添加eat方法
+        // 第一个参数：给哪个类添加方法
+        // 第二个参数：添加方法的方法编号
+        // 第三个参数：添加方法的函数实现（函数地址）
+        // 第四个参数：函数的类型，(返回值+参数类型) v:void @:对象->self :表示SEL->_cmd
+        class_addMethod(self, @selector(eat), eat, "v@:");
+    }
+    return [super resolveInstanceMethod:sel];
+}
+@end
+```
+
+#### 4.给分类添加属性
+* 原理：给一个类声明属性，其实本质就是给这个类添加关联，并不是直接把这个值的内存空间添加到类存空间。
+
+```
+@implementation ViewController
+- (void)viewDidLoad {
+    [super viewDidLoad];
+    // 给系统NSObject类动态添加属性name
+    NSObject *objc = [[NSObject alloc] init];
+    objc.name = @"小码哥";
+    NSLog(@"%@",objc.name);
+}
+@end
+
+// 定义关联的key
+static const char *key = "name";
+
+@implementation NSObject (Property)
+- (NSString *)name{
+    // 根据关联的key，获取关联的值。
+    return objc_getAssociatedObject(self, key);
+}
+
+- (void)setName:(NSString *)name{
+    // 第一个参数：给哪个对象添加关联
+    // 第二个参数：关联的key，通过这个key获取
+    // 第三个参数：关联的value
+    // 第四个参数:关联的策略
+    objc_setAssociatedObject(self, key, name, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
+}
+@end
+```
+
+#### 5.字典转模型
+* 设计模型：字典转模型的第一步
+* 模型属性，通常需要跟字典中的key一一对应
+* 问题：一个一个的生成模型属性，很慢？
+* 需求：能不能自动根据一个字典，生成对应的属性。
+* 解决：提供一个分类，专门根据字典生成对应的属性字符串。
+
+```
+@implementation NSObject (Property)
++ (void)createPropertyCodeWithDict:(NSDictionary *)dict{
+    NSMutableString *mutableStr = [NSMutableString string];
+    //遍历字典
+    [dict enumerateKeysAndObjectsUsingBlock:^(id  _Nonnull propertyName, id  _Nonnull value, BOOL * _Nonnull stop) {
+    NSString *code;
+        if ([value isKindOfClass:NSClassFromString(@"__NSCFString")]) {
+            code = [NSString stringWithFormat:@"@property (nonatomic, copy) NSString *%@;",propertyName];
+        }else if ([value isKindOfClass:NSClassFromString(@"__NSCFNumber")]){
+            code = [NSString stringWithFormat:@"@property (nonatomic, assign) int %@;",propertyName];
+        }else if ([value isKindOfClass:NSClassFromString(@"__NSCFArray")]){
+            code = [NSString stringWithFormat:@"@property (nonatomic, strong) NSArray *%@;",propertyName];
+        }else if ([value isKindOfClass:NSClassFromString(@"__NSCFDictionary")]){
+            code = [NSString stringWithFormat:@"@property (nonatomic, strong) NSDictionary *%@;",propertyName];
+        }else if ([value isKindOfClass:NSClassFromString(@"__NSCFBoolean")]){
+            code = [NSString stringWithFormat:@"@property (nonatomic, assign) BOOL %@;",propertyName];
+        }
+        [mutableStr appendFormat:@"\n%@\n",code];
+    }];
+    NSLog(@"%@",mutableStr);
+}
+@end
+```
+
+* 字典转模型的方式一：KVC
+
+```
+@implementation Status
++ (instancetype)statusWithDict:(NSDictionary *)dict{
+    Status *status = [[self alloc] init];
+    [status setValuesForKeysWithDictionary:dict];
+    return status;
+}
+@end
+
+```
+
+- KVC字典转模型弊端：必须保证，模型中的属性和字典中的key一一对应。
+*    如果不一致，就会调用`[<Status 0x7fa74b545d60> setValue:forUndefinedKey:]`
+报`key`找不到的错。    
+*  分析:模型中的属性和字典的key不一一对应，系统就会调用`setValue:forUndefinedKey:`报错。
+*  解决:重写对象的`setValue:forUndefinedKey:`,把系统的方法覆盖，
+就能继续使用KVC，字典转模型了。
+
+```
+- (void)setValue:(id)value forUndefinedKey:(NSString *)key{
+
+}
+```
+
+* 字典转模型的方式二：Runtime
+* 思路：利用运行时，遍历模型中所有属性，根据模型的属性名，去字典中查找key，取出对应的值，给模型的属性赋值。
+* 步骤：提供一个NSObject分类，专门字典转模型，以后所有模型都可以通过这个分类转。 
+
+```
+@implementation ViewController
+
+- (void)viewDidLoad {
+    [super viewDidLoad];
+    // Do any additional setup after loading the view, typically from a nib.
+    // 解析Plist文件
+    NSString *filePath = [[NSBundle mainBundle] pathForResource:@"status.plist" ofType:nil];
+    NSDictionary *statusDict = [NSDictionary dictionaryWithContentsOfFile:filePath];
+    // 获取字典数组
+    NSArray *dictArr = statusDict[@"statuses"];
+    // 自动生成模型的属性字符串
+    //    [NSObject resolveDict:dictArr[0][@"user"]];
+    _statuses = [NSMutableArray array];
+
+    // 遍历字典数组
+    for (NSDictionary *dict in dictArr) {
+        Status *status = [Status modelWithDict:dict];
+        [_statuses addObject:status];
+    }
+    // 测试数据
+    NSLog(@"%@ %@",_statuses,[_statuses[0] user]);
+}
+
+@end
+
+@implementation NSObject (Model)
+
++ (instancetype)modelWithDict:(NSDictionary *)dict
+{
+    // 思路：遍历模型中所有属性-》使用运行时
+
+    // 0.创建对应的对象
+    id objc = [[self alloc] init];
+
+    // 1.利用runtime给对象中的成员属性赋值
+
+    // class_copyIvarList:获取类中的所有成员属性
+    // Ivar：成员属性的意思
+    // 第一个参数：表示获取哪个类中的成员属性
+    // 第二个参数：表示这个类有多少成员属性，传入一个Int变量地址，会自动给这个变量赋值
+    // 返回值Ivar *：指的是一个ivar数组，会把所有成员属性放在一个数组中，通过返回的数组就能全部获取到。
+    /* 类似下面这种写法
+
+    Ivar ivar;
+    Ivar ivar1;
+    Ivar ivar2;
+    // 定义一个ivar的数组a
+    Ivar a[] = {ivar,ivar1,ivar2};
+
+    // 用一个Ivar *指针指向数组第一个元素
+    Ivar *ivarList = a;
+
+    // 根据指针访问数组第一个元素
+    ivarList[0];
+
+    */
+    unsigned int count;
+
+    // 获取类中的所有成员属性
+    Ivar *ivarList = class_copyIvarList(self, &count);
+
+    for (int i = 0; i < count; i++) {
+        // 根据角标，从数组取出对应的成员属性
+        Ivar ivar = ivarList[i];
+
+        // 获取成员属性名
+        NSString *name = [NSString stringWithUTF8String:ivar_getName(ivar)];
+
+        // 处理成员属性名->字典中的key
+        // 从第一个角标开始截取
+        NSString *key = [name substringFromIndex:1];
+
+        // 根据成员属性名去字典中查找对应的value
+        id value = dict[key];
+
+        // 二级转换:如果字典中还有字典，也需要把对应的字典转换成模型
+        // 判断下value是否是字典
+        if ([value isKindOfClass:[NSDictionary class]]) {
+            // 字典转模型
+            // 获取模型的类对象，调用modelWithDict
+            // 模型的类名已知，就是成员属性的类型
+
+            // 获取成员属性类型
+            NSString *type = [NSString stringWithUTF8String:ivar_getTypeEncoding(ivar)];
+            // 生成的是这种@"@\"User\"" 类型 -》 @"User"  在OC字符串中 \" -> "，\是转义的意思，不占用字符
+            // 裁剪类型字符串
+            NSRange range = [type rangeOfString:@"\""];
+
+            type = [type substringFromIndex:range.location + range.length];
+
+            range = [type rangeOfString:@"\""];
+
+            // 裁剪到哪个角标，不包括当前角标
+            type = [type substringToIndex:range.location];
+
+            // 根据字符串类名生成类对象
+            Class modelClass = NSClassFromString(type);
+            if (modelClass) { // 有对应的模型才需要转
+                // 把字典转模型
+                value  =  [modelClass modelWithDict:value];
+            } 
+        }
+
+        // 三级转换：NSArray中也是字典，把数组中的字典转换成模型.
+        // 判断值是否是数组
+        if ([value isKindOfClass:[NSArray class]]) {
+            // 判断对应类有没有实现字典数组转模型数组的协议
+            if ([self respondsToSelector:@selector(arrayContainModelClass)]) {
+                // 转换成id类型，就能调用任何对象的方法
+                id idSelf = self;
+
+                // 获取数组中字典对应的模型
+                NSString *type =  [idSelf arrayContainModelClass][key];
+
+                // 生成模型
+                Class classModel = NSClassFromString(type);
+                NSMutableArray *arrM = [NSMutableArray array];
+                // 遍历字典数组，生成模型数组
+                for (NSDictionary *dict in value) {
+                    // 字典转模型
+                    id model =  [classModel modelWithDict:dict];
+                    [arrM addObject:model];
+                }
+                // 把模型数组赋值给value
+                value = arrM;
+            }
+        }
+        if (value) { // 有值，才需要给模型的属性赋值
+            // 利用KVC给模型中的属性赋值
+            [objc setValue:value forKey:key];
+        }
+    }
+    return objc;
+}
+@end
+
+```
+
+isa指针不总是指向实例对象所属的类，不能依靠它来确定类型，而是应该用class方法来确定实例对象的类。因为KVO的实现机理就是将被观察对象的isa指针指向一个中间类而不是真实的类，这是一种叫做isa_swizzling的技术；
+
+Runtime中的一些术语结构：
+Class其实是一个指向objc_class结构体的指针；objc_class继承于objc_object，也就是说一个objc类本身同时也是一个对象，它用来表述类对象本身所具备的元数据。类方法就定义于此处，因为这些方法可以理解成类对象的实例方法。每个类仅有一个类对象，而每个类对象仅有一个与之相关的元类。当你发出一个类似[NSObject alloc]的消息时，你事实上是把这个消息发送给了一个类对象（class Object），这个类对象必须是一个元类的实例，而这个元类同时也是一个根元类（root meta class）的实例。所有的元类最终都指向根元类为其超类。所有的元类的方法列表都有能够响应消息的类方法。所以当[NSObject alloc]这条消息发给类对象的时候，objc_msgSend（）会去它的元类里面去查找能够响应消息的方法，如果找到了，然后对这个类对象执行方法调用。
+
+Method是一种代表类中的某个方法的类型。objc_method存储了方法名，方法类型和方法实现；
+![method的实现.png](https://upload-images.jianshu.io/upload_images/1867963-c1bbb57ab2e35bdc.png?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240)
+
+方法名类型为SEL，前面提到过相同名字的方法即使在不同类中的定义，它们的方法选择器也是相同的；
+方法类型types是个char指针，其实存储着方法的参数类型和返回值类型；
+Imp指向了方法的实现，本质是一个函数指针；
+
+Ivar是以一种代表类中实例变量的类型；
+
+IMP就是一个函数指针typedef id (*IMP)(id, SEL, ...)，这是编译器生成的，当你发起一个OC消息之后，最终执行的那段代码，就是由这个函数指针指定的。而IMP这个函数指针就指向了这个方法的实现。既然得到了执行某个实例某个方法的入口，我们就可以绕开消息传递阶段，直接执行方法，你会发现IMP指向的方法和objc_msgSend函数类型相同，参数都包含id和SEL类型。每个方法名都对应一个SEL类型的方法选择器，而每个实例对象的SEL对应的方法实现肯定是唯一的，通过一组id和SEL参数就能确定唯一的方法实现地址；反之亦然；
+
+SEL
+selector是方法选择器，其实作用就和名字一样；OC在相同的类中不会有命名相同的两个方法名，selector对方法名进行了包装，以便找到对应方法的实现；不同类中相同名字的方法所对应的 selector 是相同的，由于变量的类型不同，所以不会导致它们调用方法实现混乱。
+
+延伸：
+runtime如何通过selector找到对应的IMP地址？
+类对象中有类方法和实例方法的列表，列表中记录着方法的名词、参数和实现，而selector本质就是方法名，runtime通过这个方法名称就可以在列表中找到该方法对应的实现。
+具体实现：
+
+IMP class_getMethodImplementation(Class cls, SEL name);    第一种方法效率更高，并且类方法和实例方法都是通过此方法获取的；
+IMP method_getImplementation(Method m);
+
+
+OC中一切都是被设计成了对象，我们都知道一个类被初始化成一个实例，这个实例就是一个对象。实际上一个类的本质上也是一个对象，在runtime中用结构体表示。
+runtime 如何实现 weak 属性
+
+runtime 对注册的类， 会进行布局，对于 weak 对象会放入一个 hash 表中。 用 weak 指向的对象内存地址作为 key，当此对象的引用计数为0的时候会 dealloc，假如 weak 指向的对象内存地址是a，那么就会以a为键， 在这个 weak 表中搜索，找到所有以a为键的 weak 对象，从而设置为 nil。
+
+* 不能向编译后得到的类中增加实例变量
+* 能向运行时创建的类中添加实例变量
+* 因为编译后的类已经注册在 runtime 中，类结构体中的 objc_ivar_list 实例变量的链表 和 instance_size 实例变量的内存大小已经确定，同时runtime 会调用 class_setIvarLayout 或 class_setWeakIvarLayout 来处理 strong weak 引用。所以不能向存在的类中添加实例变量。运行时创建的类是可以添加实例变量，调用 class_addIvar 函数。但是得在调用 objc_allocateClassPair 之后，objc_registerClassPair 之前，原因同上。
+
+@synthesize和@dynamic分别有什么作用？
+1. @property有两个对应的词，一个是 @synthesize，一个是 @dynamic。如果 @synthesize和 @dynamic都没写，那么默认的就是@syntheszie var = _var;
+2. @synthesize 的语义是如果你没有手动实现 setter 方法和 getter 方法，那么编译器会自动为你加上这两个方法。
+3. @dynamic 告诉编译器：属性的 setter 与 getter 方法由用户自己实现，不自动生成。（当然对于 readonly 的属性只需提供 getter 即可）。假如一个属性被声明为 @dynamic var，然后你没有提供 @setter方法和 @getter 方法，编译的时候没问题，但是当程序运行到 instance.var = someVar，由于缺 setter 方法会导致程序崩溃；或者当运行到 someVar = var 时，由于缺 getter 方法同样会导致崩溃。编译时没问题，运行时才执行相应的方法，这就是所谓的动态绑定
+
+一个OC对象如何进行内存布局？（考虑有父类的情况）
+所有父类的成员变量和自己的成员变量都会存放在该对象所对应的存储空间中；
+每一个对象内部都有一个isa指针，指向他的类对象，类对象中放着本对象的（对象方法列表，成员变量的列表，属性列表）
+它内部也有一个isa指针指向元对象(meta class),元对象内部存放的是类方法列表,类对象内部还有一个superclass的指针,指向他的父类对象。
+
+1.类在内存中的位置在编译期间决定的，在之后修改代码，也不会改变内存中的位置；
+2.类的方法、属性以及协议在编译期间存放到了“错误”的位置，直到realizeClass执行之后，才放到了class_rw_t指向的只读区域class_ro_t,这样我们即可以在运行时为class_rw_t添加方法，也不会影响类的只读结构；
+3.在 class_ro_t 中的属性在运行期间就不能改变了，再添加方法时，会修改class_rw_t中的methods列表，而不是class_ro_t 中的baseMethods；
+
+![OC对象内存布局-1.png](https://upload-images.jianshu.io/upload_images/1867963-722eb5c80654b528.png?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240)
+
+![OC对象内存布局-2.png](https://upload-images.jianshu.io/upload_images/1867963-9656433fec04c51f.png?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240)
+
+![OC对象内存布局-添加方法.png](https://upload-images.jianshu.io/upload_images/1867963-b7336366bcd091e7.png?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240)
+
+
+类对象：是由程序员定义并在运行时由编译器创建的，它没有自己的实例变量，这里需要注意的是类的成员变量和实例方法列表是属于实例对象的，但存储于类对象中；
+![类对象.png](https://upload-images.jianshu.io/upload_images/1867963-f7e2012696b40290.png?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240)
+
+
+实例对象：是我们对类对象alloc或者new操作时所创建的，在这个过程中会拷贝实例所属的成员变量，但并不拷贝类定义的方法。调用实例方法时，系统会根据实例的isa指针去类的方法列表以及父类的方法列表中寻找与消息对应的selector指向的方法；
+
+元类对象：就是类对象的类，每个类都有自己的元类，也就是objc_class结构体里面isa指针所指向的类，OC的类方法是使用元类的根本原因，因为其中存储着对应的类对象调用的方法即类方法；
+![对象继承.png](https://upload-images.jianshu.io/upload_images/1867963-09cbf5c0ac2c4eeb.png?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240)
+
+
+循环引用：
+将某些引用设为weak，可避免出现“循环引用”；
+weak引用可以自动清空，也可以不自动清空。自动清空是随着ARC而引入新的特性，由运行期系统来实现。在具备自动清空功能的弱引用上，可以随意读取其数据，因为这种引用不会指向已经回收过的对象；
