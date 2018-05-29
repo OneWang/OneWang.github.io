@@ -1,0 +1,20 @@
+---
+layout: post
+title: 代理设计模式
+date: 2017-09-12
+---
+
+### NSProxy
+
+什么是NSProxy：
+
+NSProxy没有父类，是顶级类(根类)，跟NSObject同等地位。
+NSProxy和NSObject都实现了“NSObject Protocol”。
+NSProxy设计时就是以“抽象类”设计的，专门为转发消息而生。
+
+实现要求:
+
+继承NSProxy的子类要实现自己的初始化方法，如“init”、“initWith”。
+重写- forwardInvocation:和- methodSignatureForSelector:方法，完成消息转发
+
+如此看来NSProxy确实更适合实现做为消息转发的代理类, 因为作为一个抽象类, NSProxy自身能够处理的方法极小(仅<NSObject>接口中定义的部分方法), 所以其它方法都能够按照设计的预期被转发到被代理的对象中.
