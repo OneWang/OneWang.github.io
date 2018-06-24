@@ -14,8 +14,13 @@ objc_msgSend的消息分发的步骤：
 * 调用_class_resolveMethod，如果可以动态resolve为一个selector，不缓存，方法返回，否则
 * 转发这个selector，否则
 * 报错，抛出异常
-
-
+```
+    struct objc_cache {
+        unsigned int mask /* total = mask + 1 */                 OBJC2_UNAVAILABLE;
+        unsigned int occupied                                    OBJC2_UNAVAILABLE;
+        Method _Nullable buckets[1]                              OBJC2_UNAVAILABLE;
+    };
+```
 objc_cache的定义包含三个变量：
 * mask：可以认为是当前能达到的最大index（从0开始），所以缓存的size（total）是mask+1
 * occupied：被占用的槽位，因为缓存是以散列表的形式存在的，所以会有空槽，而occupied表示当前被占用的数目
@@ -26,7 +31,7 @@ Method的定义：包含方法名，方法类型以及方法实现；
 缓存的存储使用了散列表；为什么要用散列表呢？因为散列表检索起来比较快；
 
 * 方法缓存存在什么地方？
-
+![obj-class.png](https://upload-images.jianshu.io/upload_images/1867963-4d3612e21ec26762.png?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240)
 我们通过runtime的头文件可以看到类的定义里就有cache字段，没错，类的所有缓存都存在metaclass上，所以每个类都只有一份方法缓存，而不是每一个类的object都保存一份；
 
 * 父类方法的缓存只存在父类吗？还是子类也会缓存父类的方法？
