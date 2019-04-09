@@ -1,0 +1,33 @@
+---
+layout: post
+title: iOS中处理图片的一些小tip
+date: 2018-02-22
+---
+
+将UIImage保存磁盘，用什么方式最好？
+目前来说，保存UIImage有三种方式：1.直接用NSKeyedArchiver把UIImage序列化保存，2.用UIImagePNGRepresentation()先把图片转为PNG保存，3.用UIImageJPEGRepresentation()把图片压缩成JPG保存；
+实际上，NSKeyedArchiver是调用了UIImagePNGRepresentation进行序列化的，用它来保存图片是消耗最大的；苹果对JPG有硬编码和硬解码，保存成JPG会大大缩减编码解码时间，也能减少文件体积；所以如果图片不包含透明像素时，UIImageJPEGRepresentation（0.9）是最佳的图片保存方式，其次是UIImagePNGRepresentation()
+UIImage缓存是怎么回事？
+通过imageNamed创建UIImage时，系统实际上只是在Bundle内查找到文件名，然后把这个文件名放到UIImage里返回，并没有进行实际的文件读取和解码；当UIImage第一次显示到屏幕上时，其内部的解码方法才会被调用，同时解码结果会保存到一个全局的缓存去；据我观察，在图片解码后，App第一次退到后台和收到内存警告时，该图片的缓存才会被清空，其他情况下缓存会一直存在；
+我要是用imageWithData能不能避免缓存呢？
+不能；通过数据创建UIImage时，UIImage底层是调用ImageIO的CGImageSourceCreateWithData()方法；该方法有个参数叫ShouldCache，在64位的设备上，这个参数是默认开启的；这个图片也是同样在第一次显示到屏幕时才会被解码，随后解码数据被缓存到CGImage内部；与imageNamed创建的图片不同，如果这个图片被释放掉，其内部的解码数据也会被立刻释放；
+怎么能避免缓存呢？
+1.手动调用CGImageSourceCreateWithData()来创建图片，并把ShouldCache和ShouldCacheImmediately关掉；这么做会导致每次图片显示到屏幕时，解码方法都会被调用，造成很大CPU占用；
+2.把图片用CGContextDrawImage()绘制到画布上，然后把画布的数据取出来当作图片；这也是常见的网络图片库的做法；
+我能直接取到图片解码后的数据，而不是通过画布取到吗？
+1.CGImageSourceCreateWithData(data) 创建 ImageSource。
+2.CGImageSourceCreateImageAtIndex(source) 创建一个未解码的 CGImage。
+3.CGImageGetDataProvider(image) 获取这个图片的数据源。
+4.CGDataProviderCopyData(provider) 从数据源获取直接解码的数据。
+ImageIO 解码发生在最后一步，这样获得的数据是没有经过颜色类型转换的原生数据（比如灰度图像）
+如何判断一个文件的图片类型？
+通过读取文件或数据的头几个字节然后和对应图片格式标准进行比对；
+怎样像浏览器那样边下载边显示图片？
+第一种是 baseline，即逐行扫描。默认情况下，JPEG、PNG、GIF 都是这种保存方式。
+第二种是 interlaced，即隔行扫描。PNG 和 GIF 在保存时可以选择这种格式。
+第三种是 progressive，即渐进式。JPEG 在保存时可以选择这种方式。
+在下载图片时，首先用 CGImageSourceCreateIncremental(NULL) 创建一个空的图片源，随后在获得新数据时调用
+CGImageSourceUpdateData(data, false) 来更新图片源，最后在用 CGImageSourceCreateImageAtIndex() 创建图片来显示。
+
+一般下载或者从磁盘获取的图片是PNG或者JPG，这是经过编码压缩后的图片数据，不是位图，要把它们渲染到屏幕前就需要进行解码转成位图数据，而这个解码操作比较耗时，iOS默认是在主线程解码，所以SDWebImage将这个过程放到子线程了。
+同时因为位图体积很大，所以磁盘缓存不会直接缓存位图数据，而是编码压缩后的PNG或JPG数据。 
